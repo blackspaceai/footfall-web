@@ -7,6 +7,7 @@ import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
 
 const NAV = [
   { href: "/dashboard", label: "Today" },
+  { href: "/dashboard/inbox", label: "Inbox" },
   { href: "/dashboard/services", label: "Services & products" },
   { href: "/dashboard/team", label: "Team" },
   { href: "/dashboard/hours", label: "Hours" },
