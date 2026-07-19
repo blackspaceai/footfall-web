@@ -14,6 +14,7 @@ type Booking = {
   staff_name: string | null;
   price_minor: number;
 };
+type Staff = { id: string; name: string; is_active: boolean };
 
 const todayStr = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
 
@@ -73,14 +74,45 @@ function CreateBusinessCard({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+function BookingCard({ b, fmt }: { b: Booking; fmt: (ts: string) => string }) {
+  return (
+    <div
+      style={{
+        border: "1px solid var(--line)",
+        borderLeft: `4px solid ${b.status === "confirmed" ? "var(--emerald)" : b.status === "no_show" ? "#b3442e" : "#9a9a90"}`,
+        borderRadius: 10,
+        padding: "8px 12px",
+        marginBottom: 8,
+        background: "#fff",
+      }}
+    >
+      <div style={{ fontWeight: 700, fontSize: 13.5 }}>
+        {fmt(b.start_ts)}–{fmt(b.end_ts)}
+      </div>
+      <div style={{ fontSize: 13 }}>{b.service_name}</div>
+      <div style={{ fontSize: 12, color: "var(--muted)" }}>
+        {b.customer_name ?? b.customer_phone} · {rupees(b.price_minor)}
+      </div>
+      <span className={`pill ${b.status}`} style={{ marginTop: 4 }}>
+        {b.status.replace("_", "-")}
+      </span>
+    </div>
+  );
+}
+
 export default function TodayPage() {
   const { business, loaded, error, refresh } = useBusiness();
   const [date, setDate] = useState(todayStr());
   const [bookings, setBookings] = useState<Booking[] | null>(null);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [view, setView] = useState<"columns" | "list">("columns");
 
   const load = useCallback(() => {
     if (!business) return;
     api<Booking[]>(`businesses/${business.id}/bookings?on=${date}`).then(setBookings);
+    api<Staff[]>(`businesses/${business.id}/staff`).then((rows) =>
+      setStaff(rows.filter((s) => s.is_active))
+    );
   }, [business, date]);
   useEffect(load, [load]);
 
@@ -91,8 +123,19 @@ export default function TodayPage() {
       timeZone: business?.timezone ?? "Asia/Kolkata",
     });
 
-  const active = (bookings ?? []).filter((b) => b.status === "confirmed" || b.status === "completed");
+  const all = bookings ?? [];
+  const active = all.filter((b) => b.status === "confirmed" || b.status === "completed");
   const revenue = active.reduce((sum, b) => sum + b.price_minor, 0);
+  const unassigned = all.filter((b) => !b.staff_name);
+  const columns: { title: string; items: Booking[] }[] = [
+    ...staff.map((s) => ({
+      title: s.name,
+      items: all.filter((b) => b.staff_name === s.name),
+    })),
+    ...(unassigned.length > 0 || staff.length === 0
+      ? [{ title: staff.length ? "Anyone" : "Bookings", items: unassigned }]
+      : []),
+  ];
 
   if (error) return <p className="sub">Could not reach the Footfall API: {error}</p>;
   if (loaded && !business) {
@@ -102,7 +145,7 @@ export default function TodayPage() {
   return (
     <>
       <h1>{business ? business.name : "…"}</h1>
-      <p className="sub">The day&apos;s calendar — bookings made by your WhatsApp agent land here.</p>
+      <p className="sub">The business calendar — one column per team member.</p>
 
       <div className="db-card">
         <div className="row" style={{ justifyContent: "space-between" }}>
@@ -116,20 +159,67 @@ export default function TodayPage() {
               <span>booked value</span>
             </span>
             <span className="stat">
-              <b>{(bookings ?? []).filter((b) => b.status === "no_show").length}</b>
+              <b>{all.filter((b) => b.status === "no_show").length}</b>
               <span>no-shows</span>
             </span>
           </div>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <div className="row">
+            <button
+              className="btn ghost"
+              onClick={() => setView(view === "columns" ? "list" : "columns")}
+            >
+              {view === "columns" ? "List view" : "Calendar view"}
+            </button>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
         </div>
       </div>
 
-      <div className="db-card">
-        {bookings === null ? (
+      {bookings === null ? (
+        <div className="db-card">
           <div className="empty">Loading…</div>
-        ) : bookings.length === 0 ? (
+        </div>
+      ) : all.length === 0 ? (
+        <div className="db-card">
           <div className="empty">No bookings on this day yet.</div>
-        ) : (
+        </div>
+      ) : view === "columns" ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(180px, 1fr))`,
+            gap: 12,
+            alignItems: "start",
+            overflowX: "auto",
+          }}
+        >
+          {columns.map((col) => (
+            <div key={col.title} className="db-card" style={{ marginBottom: 0, padding: 14 }}>
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: 13,
+                  marginBottom: 10,
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                {col.title}
+                <span style={{ color: "var(--muted)", fontWeight: 600 }}>{col.items.length}</span>
+              </div>
+              {col.items.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: "var(--muted)" }}>Free all day</div>
+              ) : (
+                col.items
+                  .slice()
+                  .sort((a, b) => a.start_ts.localeCompare(b.start_ts))
+                  .map((b) => <BookingCard key={b.id} b={b} fmt={fmt} />)
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="db-card">
           <table>
             <thead>
               <tr>
@@ -142,7 +232,7 @@ export default function TodayPage() {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
+              {all.map((b) => (
                 <tr key={b.id}>
                   <td>
                     {fmt(b.start_ts)}–{fmt(b.end_ts)}
@@ -161,8 +251,8 @@ export default function TodayPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }
