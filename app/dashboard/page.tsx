@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, rupees, useBusiness } from "@/lib/api";
+import { api, createBusiness, rupees, useBusiness } from "@/lib/api";
 
 type Booking = {
   id: string;
@@ -17,8 +17,64 @@ type Booking = {
 
 const todayStr = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
 
+function CreateBusinessCard({ onCreated }: { onCreated: () => void }) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("salon");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      await createBusiness({
+        name: name.trim(),
+        category,
+        owner_wa_phone: phone.trim() || undefined,
+      });
+      onCreated();
+    } catch (ex) {
+      setErr((ex as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="db-card" style={{ maxWidth: 480 }}>
+      <h1 style={{ fontSize: 22 }}>Set up your business</h1>
+      <p className="sub">Two fields and you have a calendar. WhatsApp connect comes after.</p>
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <input
+          placeholder="Business name — e.g. Blush Beauty Salon"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="salon">Salon / spa</option>
+          <option value="clinic">Clinic / dental</option>
+          <option value="gym">Gym / studio</option>
+          <option value="other">Other</option>
+        </select>
+        <input
+          placeholder="Your WhatsApp number for alerts (optional) — 91XXXXXXXXXX"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <button className="btn" disabled={busy || !name.trim()}>
+          {busy ? "…" : "Create business"}
+        </button>
+        {err && <p style={{ color: "#b3442e", fontSize: 13, margin: 0 }}>{err}</p>}
+      </form>
+    </div>
+  );
+}
+
 export default function TodayPage() {
-  const { business, error } = useBusiness();
+  const { business, loaded, error, refresh } = useBusiness();
   const [date, setDate] = useState(todayStr());
   const [bookings, setBookings] = useState<Booking[] | null>(null);
 
@@ -39,6 +95,9 @@ export default function TodayPage() {
   const revenue = active.reduce((sum, b) => sum + b.price_minor, 0);
 
   if (error) return <p className="sub">Could not reach the Footfall API: {error}</p>;
+  if (loaded && !business) {
+    return <CreateBusinessCard onCreated={refresh} />;
+  }
 
   return (
     <>

@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+export class LoginRequired extends Error {}
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`/api/f/${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
+  if (resp.status === 401) {
+    window.location.href = "/login";
+    throw new LoginRequired("login required");
+  }
   if (!resp.ok) {
     let detail = resp.statusText;
     try {
@@ -27,16 +33,33 @@ export type Business = {
   is_live: boolean;
 };
 
-/** First (currently only) business for this owner. */
+/** First business for this owner; loaded=true once the list has answered. */
 export function useBusiness() {
   const [business, setBusiness] = useState<Business | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
+
+  const refresh = useCallback(() => {
     api<Business[]>("businesses")
-      .then((rows) => setBusiness(rows[0] ?? null))
-      .catch((e) => setError(e.message));
+      .then((rows) => {
+        setBusiness(rows[0] ?? null);
+        setLoaded(true);
+      })
+      .catch((e) => {
+        if (!(e instanceof LoginRequired)) setError(e.message);
+      });
   }, []);
-  return { business, error };
+  useEffect(refresh, [refresh]);
+
+  return { business, loaded, error, refresh };
+}
+
+export async function createBusiness(input: {
+  name: string;
+  category: string;
+  owner_wa_phone?: string;
+}): Promise<Business> {
+  return api<Business>("businesses", { method: "POST", body: JSON.stringify(input) });
 }
 
 export const rupees = (minor: number) => `₹${(minor / 100).toLocaleString("en-IN")}`;

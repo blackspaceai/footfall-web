@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
 
 const NAV = [
   { href: "/dashboard", label: "Today" },
@@ -12,6 +14,22 @@ const NAV = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!supabaseConfigured) return; // dev mode without Supabase — no gate
+    supabaseBrowser()
+      .auth.getSession()
+      .then(({ data }) => {
+        if (!data.session) router.replace("/login");
+      });
+  }, [router]);
+
+  async function signOut() {
+    if (supabaseConfigured) await supabaseBrowser().auth.signOut();
+    router.replace("/login");
+  }
+
   return (
     <div className="db">
       <aside className="db-side">
@@ -31,7 +49,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           ))}
         </nav>
-        <div className="foot">by BlackSpace AI</div>
+        <div className="foot">
+          {supabaseConfigured && (
+            <a onClick={signOut} style={{ cursor: "pointer", display: "block", marginBottom: 8 }}>
+              Sign out
+            </a>
+          )}
+          by BlackSpace AI
+        </div>
       </aside>
       <main className="db-main">{children}</main>
     </div>
