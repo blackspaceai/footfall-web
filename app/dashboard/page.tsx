@@ -126,16 +126,23 @@ export default function TodayPage() {
   const all = bookings ?? [];
   const active = all.filter((b) => b.status === "confirmed" || b.status === "completed");
   const revenue = active.reduce((sum, b) => sum + b.price_minor, 0);
-  const unassigned = all.filter((b) => !b.staff_name);
-  const columns: { title: string; items: Booking[] }[] = [
-    ...staff.map((s) => ({
-      title: s.name,
-      items: all.filter((b) => b.staff_name === s.name),
-    })),
-    ...(unassigned.length > 0 || staff.length === 0
-      ? [{ title: staff.length ? "Anyone" : "Bookings", items: unassigned }]
-      : []),
-  ];
+  const onCalendar = all.filter((b) => b.status !== "cancelled");
+  const unassigned = onCalendar.filter((b) => !b.staff_name);
+  const columns: { title: string; items: Booking[] }[] = staff.length
+    ? staff.map((s) => ({
+        title: s.name,
+        items: onCalendar.filter((b) => b.staff_name === s.name),
+      }))
+    : [{ title: "Bookings", items: onCalendar }];
+
+  async function assign(bookingId: string, staffId: string) {
+    if (!staffId) return;
+    await api(`bookings/${bookingId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ staff_id: staffId }),
+    });
+    load();
+  }
 
   if (error) return <p className="sub">Could not reach the Footfall API: {error}</p>;
   if (loaded && !business) {
@@ -174,6 +181,38 @@ export default function TodayPage() {
           </div>
         </div>
       </div>
+
+      {staff.length > 0 && unassigned.length > 0 && (
+        <div
+          className="db-card"
+          style={{ borderColor: "#f0d9a0", background: "#fdf9ef" }}
+        >
+          <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 8, color: "#8a6414" }}>
+            Needs assignment
+          </div>
+          {unassigned.map((b) => (
+            <div key={b.id} className="row" style={{ marginBottom: 8, fontSize: 13.5 }}>
+              <span>
+                {fmt(b.start_ts)} · {b.service_name} · {b.customer_name ?? b.customer_phone}
+              </span>
+              <select
+                defaultValue=""
+                onChange={(e) => assign(b.id, e.target.value)}
+                style={{ padding: "5px 10px" }}
+              >
+                <option value="" disabled>
+                  Assign to…
+                </option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
 
       {bookings === null ? (
         <div className="db-card">
