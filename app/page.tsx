@@ -2,15 +2,18 @@ import fs from "node:fs";
 import path from "node:path";
 import Script from "next/script";
 
-// The marketing page is the exported Footfall design (self-contained inline
-// styles) with its interactions in /public/app.js — served verbatim.
+// The marketing page is the exported Footfall design. Its (large) stylesheet
+// is served as a cached static file; only the markup is inlined.
+export const dynamic = "force-static";
+
 export default function MarketingPage() {
   const dir = path.join(process.cwd(), "marketing");
-  const head = fs.readFileSync(path.join(dir, "head.html"), "utf-8");
+  const links = fs.readFileSync(path.join(dir, "links.html"), "utf-8");
   const body = fs.readFileSync(path.join(dir, "body.html"), "utf-8");
   return (
     <>
-      <div dangerouslySetInnerHTML={{ __html: head + body }} />
+      <link rel="stylesheet" href="/marketing.css" />
+      <div dangerouslySetInnerHTML={{ __html: links + body }} />
       <Script src="/app.js" strategy="afterInteractive" />
     </>
   );
