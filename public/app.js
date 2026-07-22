@@ -10,6 +10,58 @@
 
   var T = function (n) { return document.querySelector('[data-dc-tpl="' + n + '"]'); };
 
+  /* ---------- hero example rotator (same layout, text swaps) ---------- */
+
+  var EXAMPLES = [
+    { m1: "Hi! Haircut available tomorrow evening?", t1: "9:14 PM",
+      m2: "Yes! 6:00 PM is free with Ravi \u2014 Haircut is \u20b9300. Shall I book it?",
+      t2: "Footfall AI \u00b7 replied in 28 seconds",
+      m3: "Yes book it \ud83d\udc4d", t3: "9:15 PM",
+      cb: "\u2713 Booking confirmed",
+      cs: "Tomorrow \u00b7 6:00 PM \u00b7 Haircut with Ravi \u00b7 \u20b9300",
+      ce: "Reminder goes out automatically. No-show? It rebooks them." },
+    { m1: "Tooth pain \ud83d\ude16 any slot today?", t1: "8:40 AM",
+      m2: "Dr. Mehta can see you at 4:30 PM today. Consultation is \u20b9500. Book it?",
+      t2: "Footfall AI \u00b7 replied in 31 seconds",
+      m3: "Yes please, coming", t3: "8:41 AM",
+      cb: "\u2713 Appointment confirmed",
+      cs: "Today \u00b7 4:30 PM \u00b7 Consultation \u00b7 Dr. Mehta \u00b7 \u20b9500",
+      ce: "Patient gets directions + a reminder at 2:30 PM." },
+    { m1: "Do you have Zumba? Timings?", t1: "6:03 AM",
+      m2: "Yes! Mon/Wed/Fri 7 PM \u2014 and your first class is free. Try tomorrow?",
+      t2: "Footfall AI \u00b7 replied in 25 seconds",
+      m3: "Book my free trial \ud83d\udcaa", t3: "6:04 AM",
+      cb: "\u2713 Trial booked",
+      cs: "Tomorrow \u00b7 7:00 PM \u00b7 Zumba trial \u00b7 Free",
+      ce: "Carry water and a towel \u2014 see you there!" },
+  ];
+
+  var wrap = document.getElementById("cc-wrap");
+  if (wrap) {
+    var msgs = wrap.querySelectorAll(".cc-msg");
+    var card = wrap.querySelector(".cc-card");
+    var exIdx = 0;
+    setInterval(function () {
+      exIdx = (exIdx + 1) % EXAMPLES.length;
+      var ex = EXAMPLES[exIdx];
+      wrap.classList.add("swap");
+      setTimeout(function () {
+        if (msgs.length >= 3 && card) {
+          msgs[0].querySelector("p").textContent = ex.m1;
+          msgs[0].querySelector("small").textContent = ex.t1;
+          msgs[1].querySelector("p").textContent = ex.m2;
+          msgs[1].querySelector("small").textContent = ex.t2;
+          msgs[2].querySelector("p").textContent = ex.m3;
+          msgs[2].querySelector("small").textContent = ex.t3;
+          card.querySelector("b").textContent = ex.cb;
+          card.querySelector("span").textContent = ex.cs;
+          card.querySelector("em").textContent = ex.ce;
+        }
+        wrap.classList.remove("swap");
+      }, 320);
+    }, 7000);
+  }
+
   /* ---------- lost-rupees counter (cost section) ---------- */
 
   var lost = 0;
