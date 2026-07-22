@@ -1,4 +1,4 @@
-# footfall-web — getfootfall.com ..
+# footfall-web — getfootfall.com ....
 
 Next.js app: marketing site at `/` (the exported Footfall design served
 verbatim with its vanilla-JS interactions) + owner dashboard at `/dashboard`
