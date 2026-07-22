@@ -37,29 +37,60 @@
   ];
 
   var wrap = document.getElementById("cc-wrap");
-  if (wrap) {
-    var msgs = wrap.querySelectorAll(".cc-msg");
-    var card = wrap.querySelector(".cc-card");
-    var exIdx = 0;
-    setInterval(function () {
-      exIdx = (exIdx + 1) % EXAMPLES.length;
-      var ex = EXAMPLES[exIdx];
-      wrap.classList.add("swap");
-      setTimeout(function () {
-        if (msgs.length >= 3 && card) {
-          msgs[0].querySelector("p").textContent = ex.m1;
-          msgs[0].querySelector("small").textContent = ex.t1;
-          msgs[1].querySelector("p").textContent = ex.m2;
-          msgs[1].querySelector("small").textContent = ex.t2;
-          msgs[2].querySelector("p").textContent = ex.m3;
-          msgs[2].querySelector("small").textContent = ex.t3;
-          card.querySelector("b").textContent = ex.cb;
-          card.querySelector("span").textContent = ex.cs;
-          card.querySelector("em").textContent = ex.ce;
-        }
-        wrap.classList.remove("swap");
-      }, 320);
-    }, 7000);
+  var tabs = document.getElementById("cc-tabs");
+  var head = document.querySelector(".cc-head");
+  var avaEl = document.getElementById("cc-ava");
+  var bizEl = document.getElementById("cc-biz");
+  var IDENT = [
+    { ava: "\u2702\ufe0f", biz: "Glow Salon & Spa" },
+    { ava: "\ud83e\uddb7", biz: "Smile Dental Care" },
+    { ava: "\ud83c\udfcb\ufe0f", biz: "FitZone Gym" },
+  ];
+  var exIdx = 0;
+  var exTimer = null;
+
+  function showExample(i) {
+    exIdx = i;
+    var ex = EXAMPLES[i];
+    if (tabs) {
+      Array.prototype.forEach.call(tabs.children, function (b, j) {
+        b.classList.toggle("on", j === i);
+      });
+    }
+    var msgs = wrap ? wrap.querySelectorAll(".cc-msg") : [];
+    var card = wrap ? wrap.querySelector(".cc-card") : null;
+    if (msgs.length >= 3 && card) {
+      msgs[0].querySelector("p").textContent = ex.m1;
+      msgs[0].querySelector("small").textContent = ex.t1;
+      msgs[1].querySelector("p").textContent = ex.m2;
+      msgs[1].querySelector("small").textContent = ex.t2;
+      msgs[2].querySelector("p").textContent = ex.m3;
+      msgs[2].querySelector("small").textContent = ex.t3;
+      card.querySelector("b").textContent = ex.cb;
+      card.querySelector("span").textContent = ex.cs;
+      card.querySelector("em").textContent = ex.ce;
+    }
+    if (avaEl) avaEl.textContent = IDENT[i].ava;
+    if (bizEl) bizEl.textContent = IDENT[i].biz;
+    if (wrap) { wrap.style.opacity = "1"; wrap.classList.remove("swap"); }
+    if (head) head.classList.remove("swap");
+  }
+
+  function armAuto() {
+    if (exTimer) clearInterval(exTimer);
+    exTimer = setInterval(function () {
+      showExample((exIdx + 1) % EXAMPLES.length);
+    }, 6000);
+  }
+
+  if (wrap && tabs) {
+    Array.prototype.forEach.call(tabs.children, function (b, j) {
+      b.addEventListener("click", function () {
+        showExample(j);
+        armAuto();
+      });
+    });
+    armAuto();
   }
 
   /* ---------- lost-rupees counter (cost section) ---------- */
