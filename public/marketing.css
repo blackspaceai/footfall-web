@@ -237,3 +237,27 @@ body{margin:0;background:#07281d;font-family:'Bricolage Grotesque',sans-serif;ov
 .cc-who em{font-style:normal;font-size:11px;color:#7df2a8;font-weight:700}
 .cc-outer .cc-wrap{min-height:440px}
 @media (max-width:760px){.cc-outer{width:100%}}
+
+/* ---------- 24x7 booking clock hero ---------- */
+.fc-wrap{flex:0 0 auto;width:460px;display:flex;flex-direction:column;align-items:center;padding:10px 0}
+.fc-clock{position:relative;flex:0 0 auto}
+.fc-ring{position:absolute;inset:0}
+.fc-orbit{position:absolute;inset:0;animation:fcSpin 14s linear infinite}
+.fc-orbit i{position:absolute;left:50%;top:22px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#ffd98f;box-shadow:0 0 14px 4px rgba(240,160,44,.65)}
+@keyframes fcSpin{to{transform:rotate(360deg)}}
+.fc-sky{position:absolute;transform:translate(-50%,-50%);font-size:20px}
+.fc-mark{position:absolute;transform:translate(-50%,-50%) scale(0);width:27px;height:27px;border-radius:50%;background:linear-gradient(160deg,#1db877,#0f8a55);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.fc-mark.amber{background:linear-gradient(160deg,#f6c46e,#e0921f);color:#3a2604}
+.fc-mark.lit{transform:translate(-50%,-50%) scale(1);transition:transform .35s cubic-bezier(.2,.9,.3,1.4)}
+.fc-mark.lit::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(125,242,168,.5);animation:fcPing .7s ease-out forwards}
+.fc-mark.amber.lit::after{border-color:rgba(240,160,44,.55)}
+@keyframes fcPing{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.5);opacity:0}}
+.fc-lab{position:absolute;transform:translate(-50%,-50%);font-size:11.5px;font-weight:800;color:#ffd98f;letter-spacing:.02em;opacity:0;white-space:nowrap}
+.fc-lab.lit{opacity:1;transition:opacity .4s}
+.fc-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:200px}
+.fc-center b{display:block;font-size:64px;line-height:1;font-weight:800;letter-spacing:-.04em;color:#eafff3;font-variant-numeric:tabular-nums;text-shadow:0 2px 0 #0d6e42,0 4px 0 #0a5634,0 12px 30px rgba(0,0,0,.55)}
+.fc-center span{display:block;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#9fd0b8;font-weight:800;margin-top:6px}
+.fc-center em{display:block;font-style:normal;font-size:12.5px;color:#ffd98f;font-weight:700;margin-top:10px}
+.fc-cap{margin-top:22px;text-align:center;font-size:15px;line-height:1.55;color:#9fd0b8}
+.fc-cap b{color:#eafff3;font-weight:800}
+@media (max-width:760px){.fc-wrap{width:100%;transform:scale(.74);transform-origin:top center;margin-bottom:-90px}}

@@ -10,87 +10,44 @@
 
   var T = function (n) { return document.querySelector('[data-dc-tpl="' + n + '"]'); };
 
-  /* ---------- hero example rotator (same layout, text swaps) ---------- */
+  /* ---------- 24x7 booking clock ---------- */
 
-  var EXAMPLES = [
-    { m1: "Hi! Haircut available tomorrow evening?", t1: "9:14 PM",
-      m2: "Yes! 6:00 PM is free with Ravi \u2014 Haircut is \u20b9300. Shall I book it?",
-      t2: "Footfall AI \u00b7 replied in 28 seconds",
-      m3: "Yes book it \ud83d\udc4d", t3: "9:15 PM",
-      cb: "\u2713 Booking confirmed",
-      cs: "Tomorrow \u00b7 6:00 PM \u00b7 Haircut with Ravi \u00b7 \u20b9300",
-      ce: "Reminder goes out automatically. No-show? It rebooks them." },
-    { m1: "Tooth pain \ud83d\ude16 any slot today?", t1: "8:40 AM",
-      m2: "Dr. Mehta can see you at 4:30 PM today. Consultation is \u20b9500. Book it?",
-      t2: "Footfall AI \u00b7 replied in 31 seconds",
-      m3: "Yes please, coming", t3: "8:41 AM",
-      cb: "\u2713 Appointment confirmed",
-      cs: "Today \u00b7 4:30 PM \u00b7 Consultation \u00b7 Dr. Mehta \u00b7 \u20b9500",
-      ce: "Patient gets directions + a reminder at 2:30 PM." },
-    { m1: "Do you have Zumba? Timings?", t1: "6:03 AM",
-      m2: "Yes! Mon/Wed/Fri 7 PM \u2014 and your first class is free. Try tomorrow?",
-      t2: "Footfall AI \u00b7 replied in 25 seconds",
-      m3: "Book my free trial \ud83d\udcaa", t3: "6:04 AM",
-      cb: "\u2713 Trial booked",
-      cs: "Tomorrow \u00b7 7:00 PM \u00b7 Zumba trial \u00b7 Free",
-      ce: "Carry water and a towel \u2014 see you there!" },
-  ];
+  var NIGHT = [0, 1, 2, 11];  // marker indexes that land after closing
+  var TOTAL = 12;
+  var countEl = document.getElementById("fc-count");
+  var nightEl = document.getElementById("fc-night");
 
-  var wrap = document.getElementById("cc-wrap");
-  var tabs = document.getElementById("cc-tabs");
-  var head = document.querySelector(".cc-head");
-  var avaEl = document.getElementById("cc-ava");
-  var bizEl = document.getElementById("cc-biz");
-  var IDENT = [
-    { ava: "\u2702\ufe0f", biz: "Glow Salon & Spa" },
-    { ava: "\ud83e\uddb7", biz: "Smile Dental Care" },
-    { ava: "\ud83c\udfcb\ufe0f", biz: "FitZone Gym" },
-  ];
-  var exIdx = 0;
-  var exTimer = null;
-
-  function showExample(i) {
-    exIdx = i;
-    var ex = EXAMPLES[i];
-    if (tabs) {
-      Array.prototype.forEach.call(tabs.children, function (b, j) {
-        b.classList.toggle("on", j === i);
-      });
-    }
-    var msgs = wrap ? wrap.querySelectorAll(".cc-msg") : [];
-    var card = wrap ? wrap.querySelector(".cc-card") : null;
-    if (msgs.length >= 3 && card) {
-      msgs[0].querySelector("p").textContent = ex.m1;
-      msgs[0].querySelector("small").textContent = ex.t1;
-      msgs[1].querySelector("p").textContent = ex.m2;
-      msgs[1].querySelector("small").textContent = ex.t2;
-      msgs[2].querySelector("p").textContent = ex.m3;
-      msgs[2].querySelector("small").textContent = ex.t3;
-      card.querySelector("b").textContent = ex.cb;
-      card.querySelector("span").textContent = ex.cs;
-      card.querySelector("em").textContent = ex.ce;
-    }
-    if (avaEl) avaEl.textContent = IDENT[i].ava;
-    if (bizEl) bizEl.textContent = IDENT[i].biz;
-    if (wrap) { wrap.style.opacity = "1"; wrap.classList.remove("swap"); }
-    if (head) head.classList.remove("swap");
+  function setLit(i, on) {
+    var m = document.getElementById("fc-m" + i);
+    var l = document.getElementById("fc-l" + i);
+    if (m) m.classList.toggle("lit", on);
+    if (l) l.classList.toggle("lit", on);
   }
 
-  function armAuto() {
-    if (exTimer) clearInterval(exTimer);
-    exTimer = setInterval(function () {
-      showExample((exIdx + 1) % EXAMPLES.length);
-    }, 6000);
-  }
-
-  if (wrap && tabs) {
-    Array.prototype.forEach.call(tabs.children, function (b, j) {
-      b.addEventListener("click", function () {
-        showExample(j);
-        armAuto();
-      });
-    });
-    armAuto();
+  if (countEl) {
+    var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0]; // chronological from 12:15 AM
+    var pos2 = 0, litCount = 0, nightCount = 0;
+    var clockStep = function () {
+      if (pos2 < order.length) {
+        var i = order[pos2];
+        setLit(i, true);
+        litCount += 1;
+        if (NIGHT.indexOf(i) !== -1) nightCount += 1;
+        countEl.textContent = String(litCount);
+        nightEl.textContent = "\ud83c\udf19 " + nightCount + " while you slept";
+        pos2 += 1;
+        setTimeout(clockStep, 1100);
+      } else {
+        setTimeout(function () {
+          for (var j = 0; j < TOTAL; j++) setLit(j, false);
+          litCount = 0; nightCount = 0; pos2 = 0;
+          countEl.textContent = "0";
+          nightEl.textContent = "\ud83c\udf19 0 while you slept";
+          setTimeout(clockStep, 900);
+        }, 5200);
+      }
+    };
+    setTimeout(clockStep, 700);
   }
 
   /* ---------- lost-rupees counter (cost section) ---------- */
