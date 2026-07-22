@@ -10,37 +10,41 @@
 
   var T = function (n) { return document.querySelector('[data-dc-tpl="' + n + '"]'); };
 
-  /* ---------- doorway scene ---------- */
+  /* ---------- live mini-dashboard ---------- */
 
-  var FLOW = [
-    { msg: "Any bridal makeup slots this Saturday?", time: "11:47 PM",
-      k: "✓ BOOKED", t: "Bridal Makeup — Sat 2:00 PM", s: "Glow Salon · Priya · ₹4,500", amt: 4500 },
-    { msg: "Root canal cost? urgent 🥲", time: "11:58 PM",
-      k: "✓ BOOKED", t: "Root canal consult — Tue 11 AM", s: "Smile Dental · Dr. Mehta · ₹1,200", amt: 1200 },
-    { msg: "Do you have Zumba? Monthly plans?", time: "6:03 AM",
-      k: "✓ BOOKED", t: "Zumba trial — Wed 7:00 PM", s: "FitZone · then ₹1,500/mo", amt: 1500 },
-    { msg: "(missed call — no answer)", time: "1:15 PM", rec: true,
-      k: "↻ RECOVERED", t: "Facial — rebooked Thu 5 PM", s: "agent texted first · ₹1,800", amt: 1800 },
-    { msg: "Weekend batch for Class 10 maths?", time: "9:21 PM",
-      k: "✓ BOOKED", t: "Demo class — Sat 9:00 AM", s: "Bright Minds · Anita ma'am", amt: 2500 },
-    { msg: "How much for a small wrist tattoo?", time: "1:12 AM",
-      k: "✓ BOOKED", t: "Wrist linework — Fri 4:00 PM", s: "Inkline · Arjun · ₹2,000", amt: 2000 },
-    { msg: "Wash + polish price for a Swift?", time: "8:14 AM",
-      k: "✓ BOOKED", t: "Wash + polish — tomorrow 10 AM", s: "AutoShine · ₹1,400", amt: 1400 },
-    { msg: "no-show yesterday 😕", time: "10:05 AM", rec: true,
-      k: "↻ RECOVERED", t: "Haircut — rebooked today 6 PM", s: "reminder answered · ₹300", amt: 300 },
-    { msg: "Grooming for a golden retriever?", time: "7:45 PM",
-      k: "✓ BOOKED", t: "Full grooming — Thu 11:00 AM", s: "Furry Tales · ₹1,800", amt: 1800 },
-    { msg: "Maternity shoot charges?", time: "10:30 PM",
-      k: "✓ BOOKED", t: "Studio shoot — Sun 4:00 PM", s: "Lenscraft · 15 edits · ₹6,500", amt: 6500 },
+  var PLAN = [
+    { c: 0, top: 2,  h: 11, b: "Bridal Makeup", s: "11:00 · ₹4,500", amt: 4500,
+      n: "💬 Priya: “Bridal makeup Saturday?” → booked in 31s" },
+    { c: 1, top: 8,  h: 8,  b: "Haircut", s: "11:30 · ₹300", amt: 300,
+      n: "💬 Rahul: “Haircut abhi possible?” → 11:30 with Monu" },
+    { c: 2, top: 16, h: 10, b: "Facial", s: "12:15 · ₹1,800", amt: 1800,
+      n: "💬 Meera: “Facial ka rate?” → quoted & booked" },
+    { c: 0, top: 26, h: 8,  b: "Eyebrows", s: "1:00 · ₹50", amt: 50,
+      n: "💬 Ananya: “Eyebrows walk-in?” → slot held" },
+    { c: 1, top: 30, h: 12, b: "Hair colour", s: "1:30 · ₹1,200", amt: 1200, rec: true,
+      n: "↻ No-show yesterday → reminder answered → rebooked" },
+    { c: 2, top: 38, h: 9,  b: "Head massage", s: "2:30 · ₹400", amt: 400,
+      n: "💬 Uncle ji (missed call) → agent texted first → booked" },
+    { c: 0, top: 46, h: 12, b: "Keratin", s: "3:00 · ₹5,500", amt: 5500,
+      n: "💬 “Keratin kitne ka?” at 1:12 AM → answered in 28s" },
+    { c: 1, top: 52, h: 8,  b: "Beard trim", s: "4:00 · ₹150", amt: 150,
+      n: "💬 “Beard trim + haircut combo?” → upsold politely" },
+    { c: 2, top: 58, h: 10, b: "Facial", s: "4:30 · ₹1,800", amt: 1800, rec: true,
+      n: "↻ Recovered: cancelled Tue → offered Thu → confirmed" },
+    { c: 0, top: 68, h: 10, b: "Bridal trial", s: "5:30 · ₹2,000", amt: 2000,
+      n: "💬 “Trial before wedding?” → 5:30 with Sakshu" },
+    { c: 2, top: 74, h: 9,  b: "Haircut", s: "6:15 · ₹300", amt: 300,
+      n: "💬 “Aaj evening free ho?” → 6:15 confirmed" },
+    { c: 1, top: 78, h: 11, b: "Party makeup", s: "7:00 · ₹2,500", amt: 2500,
+      n: "💬 “Party makeup tonight?!” → squeezed in at 7" },
   ];
 
-  var lane = document.getElementById("df-lane");
-  var stack = document.getElementById("df-stack");
-  var glow = document.getElementById("df-glow");
-  var countEl = document.getElementById("df-count");
-  var booked = 0;
-  var idx = 0;
+  var tracks = [document.getElementById("fd-c0"), document.getElementById("fd-c1"),
+                document.getElementById("fd-c2")];
+  var revEl = document.getElementById("fd-rev");
+  var recEl = document.getElementById("fd-rec");
+  var notifEl = document.getElementById("fd-notif-msg");
+  var rev = 0, recs = 0, step = 0;
 
   function esc(s) {
     var d = document.createElement("div");
@@ -48,55 +52,59 @@
     return d.innerHTML;
   }
 
-  function dropBubble(item) {
+  function notify(text) {
+    if (!notifEl) return;
+    notifEl.classList.remove("in");
+    void notifEl.offsetWidth; // restart animation
+    notifEl.textContent = text;
+    notifEl.classList.add("in");
+  }
+
+  function placeBlock(item) {
+    var track = tracks[item.c];
+    if (!track) return;
     var el = document.createElement("div");
-    el.className = "df-bubble";
-    var offset = Math.round((Math.random() - 0.5) * 120);
-    el.style.marginLeft = offset + "px";
-    el.innerHTML = esc(item.msg) + "<small>" + esc(item.time) + "</small>";
-    lane.appendChild(el);
-    el.addEventListener("animationend", function () { el.remove(); });
-    setTimeout(function () { el.remove(); }, 2700); // fallback: throttled/hidden tabs
-    while (lane.children.length > 3) lane.firstChild.remove();
+    el.className = "fd-block" + (item.rec ? " rec" : "");
+    el.style.top = item.top + "%";
+    el.style.height = item.h + "%";
+    el.innerHTML = "<b>" + esc(item.b) + "</b><span>" + esc(item.s) + "</span>";
+    track.appendChild(el);
+    rev += item.amt;
+    if (revEl) revEl.textContent = "₹" + rev.toLocaleString("en-IN");
+    if (item.rec) {
+      recs += 1;
+      if (recEl) recEl.textContent = String(recs);
+    }
   }
 
-  function emitTicket(item) {
-    if (glow) {
-      glow.classList.add("flash");
-      setTimeout(function () { glow.classList.remove("flash"); }, 320);
-    }
-    var el = document.createElement("div");
-    el.className = "df-ticket" + (item.rec ? " rec" : "");
-    el.innerHTML =
-      '<div class="k">' + esc(item.k) + "</div>" +
-      '<div class="t">' + esc(item.t) + "</div>" +
-      '<div class="s">' + esc(item.s) + "</div>";
-    stack.insertBefore(el, stack.firstChild);
-    var kids = stack.children;
-    for (var i = 0; i < kids.length; i++) {
-      kids[i].classList.toggle("old", i > 0);
-    }
-    if (stack.children.length > 3) {
-      var last = stack.children[stack.children.length - 1];
-      last.classList.add("fade");
-      setTimeout(function () { last.remove(); }, 350);
-    }
-    booked += item.amt;
-    if (countEl) countEl.textContent = "₹" + booked.toLocaleString("en-IN");
+  function resetDay() {
+    tracks.forEach(function (track) {
+      if (!track) return;
+      Array.prototype.forEach.call(track.querySelectorAll(".fd-block"), function (b) {
+        b.classList.add("fadeout");
+      });
+      setTimeout(function () { track.innerHTML = ""; }, 650);
+    });
+    rev = 0; recs = 0;
+    if (revEl) revEl.textContent = "₹0";
+    if (recEl) recEl.textContent = "0";
+    notify("🌅 A new day at the salon — the agent is listening…");
   }
 
-  function cycle() {
-    var item = FLOW[idx % FLOW.length];
-    idx += 1;
-    dropBubble(item);
-    setTimeout(function () { emitTicket(item); }, 2150);
-    setTimeout(cycle, 3400);
+  function tick() {
+    if (step < PLAN.length) {
+      var item = PLAN[step];
+      notify(item.n);
+      placeBlock(item);
+      step += 1;
+      setTimeout(tick, 2600);
+    } else {
+      step = 0;
+      setTimeout(function () { resetDay(); setTimeout(tick, 1600); }, 3800);
+    }
   }
 
-  if (lane && stack) {
-    emitTicket(FLOW[FLOW.length - 1]);
-    setTimeout(cycle, 600);
-  }
+  if (tracks[0]) setTimeout(tick, 900);
 
   /* ---------- lost-rupees counter (cost section) ---------- */
 
