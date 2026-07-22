@@ -21,7 +21,7 @@ export default function TermsPage() {
 
       <h2 style={S.h2}>The service</h2>
       <p>
-        Footfall provides an AI-powered receptionist for your business&rsquo;s WhatsApp number:
+        Footfall, a product of <b>BlackSpace AI</b>, provides an AI-powered receptionist for your business&rsquo;s WhatsApp number:
         it answers customer messages, quotes from the price list you configure, books
         appointments into your Footfall calendar, and sends reminders and follow-ups. You remain
         the merchant of record for everything you sell; Footfall is a communication and
@@ -72,7 +72,7 @@ export default function TermsPage() {
       <h2 style={S.h2}>Governing law</h2>
       <p>
         These terms are governed by the laws of India, with courts at Hyderabad, Telangana having
-        jurisdiction. Contact: <b>sumithtatipally@gmail.com</b>.
+        jurisdiction. Contact: <b>contact@blackspace.ai</b>.
       </p>
     </main>
   );

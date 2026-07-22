@@ -21,7 +21,7 @@ export default function PrivacyPage() {
 
       <h2 style={S.h2}>Who we are</h2>
       <p>
-        Footfall (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides an AI receptionist on WhatsApp for
+        Footfall is a product of <b>BlackSpace AI</b> (&ldquo;we&rdquo;, &ldquo;us&rdquo;). Footfall provides an AI receptionist on WhatsApp for
         service businesses in India — it answers customer inquiries, quotes prices, books
         appointments, and sends reminders on behalf of the businesses that subscribe to us
         (&ldquo;Businesses&rdquo;). This policy covers both Business account holders and the
@@ -79,7 +79,7 @@ export default function PrivacyPage() {
 
       <h2 style={S.h2}>Contact</h2>
       <p>
-        Questions or requests: <b>sumithtatipally@gmail.com</b>. We are based in India and this
+        Questions or requests: <b>contact@blackspace.ai</b>. We are based in India and this
         policy is governed by Indian law, including the Digital Personal Data Protection Act,
         2023 as applicable.
       </p>
