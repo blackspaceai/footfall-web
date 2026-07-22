@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
+import { BusinessProvider, useBusiness } from "@/lib/business-context";
 
 const NAV = [
   { href: "/dashboard", label: "Today" },
@@ -15,7 +16,35 @@ const NAV = [
   { href: "/dashboard/settings", label: "Settings" },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function BusinessSwitcher() {
+  const { business, businesses, select } = useBusiness();
+  if (businesses.length < 2) return null;
+  return (
+    <select
+      value={business?.id ?? ""}
+      onChange={(e) => select(e.target.value)}
+      style={{
+        margin: "0 0 14px",
+        width: "100%",
+        background: "rgba(125, 242, 168, 0.08)",
+        color: "var(--ivory, #eafff3)",
+        border: "1px solid rgba(143, 212, 180, 0.3)",
+        borderRadius: 9,
+        padding: "8px 10px",
+        fontSize: 13.5,
+        fontWeight: 600,
+      }}
+    >
+      {businesses.map((b) => (
+        <option key={b.id} value={b.id} style={{ color: "#10241b" }}>
+          {b.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -41,6 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <img src="/logo/footfall-mark-transparent.svg" alt="" />
           footfall
         </div>
+        <BusinessSwitcher />
         <nav>
           {NAV.map((item) => (
             <Link
@@ -63,5 +93,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
       <main className="db-main">{children}</main>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <BusinessProvider>
+      <Shell>{children}</Shell>
+    </BusinessProvider>
   );
 }

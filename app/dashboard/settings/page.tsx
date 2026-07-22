@@ -1,7 +1,125 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, useBusiness } from "@/lib/api";
+import { api } from "@/lib/api";
+import { useBusiness } from "@/lib/business-context";
+
+type WaAccount = {
+  connected: boolean;
+  phone_number_id: string | null;
+  display_phone: string | null;
+  status: string | null;
+};
+
+function WhatsAppCard({ businessId }: { businessId: string }) {
+  const [acct, setAcct] = useState<WaAccount | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [wabaId, setWabaId] = useState("");
+  const [displayPhone, setDisplayPhone] = useState("");
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const load = () =>
+    api<WaAccount>(`businesses/${businessId}/wa-account`).then((a) => {
+      setAcct(a);
+      setEditing(!a.connected);
+    });
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId]);
+
+  async function connect() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await api(`businesses/${businessId}/wa-account`, {
+        method: "PUT",
+        body: JSON.stringify({
+          phone_number_id: phoneNumberId.trim(),
+          access_token: token.trim(),
+          waba_id: wabaId.trim() || null,
+          display_phone: displayPhone.trim() || null,
+        }),
+      });
+      setToken("");
+      setMsg("Connected — the agent answers this number now.");
+      load();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="db-card" style={{ maxWidth: 640 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>WhatsApp connection</div>
+      {acct === null ? (
+        <div className="empty">Loading…</div>
+      ) : (
+        <>
+          {acct.connected && (
+            <p style={{ fontSize: 14, margin: "0 0 10px" }}>
+              <span className="pill confirmed">connected</span>{" "}
+              {acct.display_phone ?? "number"} · id {acct.phone_number_id}
+            </p>
+          )}
+          {!editing ? (
+            <button className="btn ghost" onClick={() => setEditing(true)}>
+              Update connection
+            </button>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input
+                placeholder="Phone number ID (from Meta → WhatsApp → API Setup)"
+                value={phoneNumberId}
+                onChange={(e) => setPhoneNumberId(e.target.value)}
+              />
+              <input
+                placeholder="Access token (permanent system-user token)"
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+              />
+              <div className="row">
+                <input
+                  placeholder="WABA ID (optional)"
+                  value={wabaId}
+                  onChange={(e) => setWabaId(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <input
+                  placeholder="Display number (optional)"
+                  value={displayPhone}
+                  onChange={(e) => setDisplayPhone(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+              </div>
+              <div className="row">
+                <button
+                  className="btn"
+                  onClick={connect}
+                  disabled={busy || !phoneNumberId.trim() || token.trim().length < 20}
+                >
+                  {acct.connected ? "Update" : "Connect"}
+                </button>
+                {acct.connected && (
+                  <button className="btn ghost" onClick={() => setEditing(false)}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          {msg && <p style={{ fontSize: 13, margin: "10px 0 0", color: "#0f6e42" }}>{msg}</p>}
+        </>
+      )}
+    </div>
+  );
+}
 
 type BusinessFull = {
   id: string;
@@ -78,6 +196,8 @@ export default function SettingsPage() {
     <>
       <h1>Settings</h1>
       <p className="sub">How your receptionist behaves. Changes apply to the next message.</p>
+
+      <WhatsAppCard businessId={full.id} />
 
       <div className="db-card" style={{ maxWidth: 640 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

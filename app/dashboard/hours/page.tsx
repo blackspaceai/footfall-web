@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, useBusiness } from "@/lib/api";
+import { api } from "@/lib/api";
+import { useBusiness } from "@/lib/business-context";
 
 type HoursRow = { weekday: number; opens_at: string; closes_at: string };
 type Staff = { id: string; name: string; is_active: boolean };

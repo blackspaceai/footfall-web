@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, useBusiness } from "@/lib/api";
+import { api } from "@/lib/api";
+import { useBusiness } from "@/lib/business-context";
 
 type Conversation = {
   id: string;

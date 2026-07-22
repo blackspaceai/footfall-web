@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, rupees, useBusiness } from "@/lib/api";
+import { api, rupees } from "@/lib/api";
+import { useBusiness } from "@/lib/business-context";
 
 type Booking = {
   id: string;

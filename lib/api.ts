@@ -1,7 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-
 export class LoginRequired extends Error {}
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -32,27 +30,6 @@ export type Business = {
   owner_wa_phone: string | null;
   is_live: boolean;
 };
-
-/** First business for this owner; loaded=true once the list has answered. */
-export function useBusiness() {
-  const [business, setBusiness] = useState<Business | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(() => {
-    api<Business[]>("businesses")
-      .then((rows) => {
-        setBusiness(rows[0] ?? null);
-        setLoaded(true);
-      })
-      .catch((e) => {
-        if (!(e instanceof LoginRequired)) setError(e.message);
-      });
-  }, []);
-  useEffect(refresh, [refresh]);
-
-  return { business, loaded, error, refresh };
-}
 
 export async function createBusiness(input: {
   name: string;
