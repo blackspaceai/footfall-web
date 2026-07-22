@@ -10,46 +10,6 @@
 
   var T = function (n) { return document.querySelector('[data-dc-tpl="' + n + '"]'); };
 
-  /* ---------- 24x7 booking clock ---------- */
-
-  var NIGHT = [0, 1, 2, 11];  // marker indexes that land after closing
-  var TOTAL = 12;
-  var countEl = document.getElementById("fc-count");
-  var nightEl = document.getElementById("fc-night");
-
-  function setLit(i, on) {
-    var m = document.getElementById("fc-m" + i);
-    var l = document.getElementById("fc-l" + i);
-    if (m) m.classList.toggle("lit", on);
-    if (l) l.classList.toggle("lit", on);
-  }
-
-  if (countEl) {
-    var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0]; // chronological from 12:15 AM
-    var pos2 = 0, litCount = 0, nightCount = 0;
-    var clockStep = function () {
-      if (pos2 < order.length) {
-        var i = order[pos2];
-        setLit(i, true);
-        litCount += 1;
-        if (NIGHT.indexOf(i) !== -1) nightCount += 1;
-        countEl.textContent = String(litCount);
-        nightEl.textContent = "\ud83c\udf19 " + nightCount + " while you slept";
-        pos2 += 1;
-        setTimeout(clockStep, 1100);
-      } else {
-        setTimeout(function () {
-          for (var j = 0; j < TOTAL; j++) setLit(j, false);
-          litCount = 0; nightCount = 0; pos2 = 0;
-          countEl.textContent = "0";
-          nightEl.textContent = "\ud83c\udf19 0 while you slept";
-          setTimeout(clockStep, 900);
-        }, 5200);
-      }
-    };
-    setTimeout(clockStep, 700);
-  }
-
   /* ---------- lost-rupees counter (cost section) ---------- */
 
   var lost = 0;
