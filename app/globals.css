@@ -83,6 +83,7 @@ html, body { margin: 0; padding: 0; }
 
 /* ----- main column ----- */
 .db-main { flex: 1; padding: 30px 38px 60px; max-width: 1120px; min-width: 0; }
+.db-main:has(.tl) { max-width: none; }
 .db-main h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.015em; margin: 0; }
 .db-main .sub { color: var(--muted); font-size: 13px; margin: 5px 0 24px; }
 
@@ -273,3 +274,8 @@ html, body { margin: 0; padding: 0; }
 .db .tl-tag.completed { color: #27417a; }
 .db .tl-tag.cancelled { color: var(--muted); text-decoration: line-through; }
 .db .tl-tag.blocked { color: var(--muted); }
+
+/* mid-width bars: compact label inside, tight padding */
+.db .tl-block.compact { padding: 2px 4px; }
+.db .tl-block.compact b { font-size: 9.5px; letter-spacing: -0.015em; }
+.db .tl-block.compact > span { font-size: 9px; }

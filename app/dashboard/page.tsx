@@ -163,10 +163,12 @@ function Timeline({
     return `${h % 12 === 0 ? 12 : h % 12} ${h >= 12 ? "PM" : "AM"}`;
   };
 
-  // Bars span the booking's true duration. When a bar is too narrow to hold
-  // its label (< MIN_W), the text sits beside it instead, and the combined
-  // footprint decides when a colliding booking drops to a lane below.
+  // Bars span the booking's true duration. Wide bars carry the full label,
+  // mid-width bars a compact one (so back-to-back bookings stay on one lane);
+  // only truly tiny bars hang their label outside, and only that outside
+  // label counts toward lane collision.
   const MIN_W = 14;
+  const COMPACT_W = 4;
   const LABEL_W = 13;
   const LANE_H = 46;
   const unassigned = bookings.filter((b) => !b.staff_name);
@@ -217,14 +219,24 @@ function Timeline({
           {rows.map((row) => {
             const sorted = [...row.items].sort((a, b) => a.start_ts.localeCompare(b.start_ts));
             const laneEnds: number[] = [];
-            const placed = sorted.map((b) => {
+            const placed = sorted.map((b, i) => {
               const s = pct(bookMin(b.start_ts));
               const w = Math.max(pct(bookMin(b.end_ts)) - s, 1);
-              const inside = w >= MIN_W;
-              // Narrow bars carry their label outside — to the right, or to
-              // the left when the bar sits against the end of the day.
-              const labelLeft = !inside && s + w + LABEL_W > 100;
-              const foot = inside ? w : w + LABEL_W;
+              const nextS = i + 1 < sorted.length ? pct(bookMin(sorted[i + 1].start_ts)) : 200;
+              // Prefer the full outside label whenever the gap to the next
+              // booking can hold it; squeeze text inside only in dense runs.
+              const mode =
+                w >= MIN_W
+                  ? "full"
+                  : nextS - (s + w) >= LABEL_W || s + w + LABEL_W > 100
+                    ? "tag"
+                    : w >= COMPACT_W
+                      ? "compact"
+                      : "tag";
+              // Tiny bars carry their label outside — to the right, or to the
+              // left when the bar sits against the end of the day.
+              const labelLeft = mode === "tag" && s + w + LABEL_W > 100;
+              const foot = mode === "tag" ? w + LABEL_W : w;
               const footStart = labelLeft ? s - LABEL_W : s;
               let lane = laneEnds.findIndex((endAt) => endAt <= footStart + 0.4);
               if (lane === -1) {
@@ -232,7 +244,7 @@ function Timeline({
                 laneEnds.push(0);
               }
               laneEnds[lane] = footStart + foot;
-              return { b, s, w, lane, inside, labelLeft };
+              return { b, s, w, lane, mode, labelLeft };
             });
             const lanes = Math.max(laneEnds.length, 1);
             const isUnassigned = row.name === "Unassigned";
@@ -267,24 +279,31 @@ function Timeline({
                   {isToday && tzNowMin > axis.open && tzNowMin < axis.close && (
                     <i className="tl-now" style={{ left: `${pct(tzNowMin)}%` }} />
                   )}
-                  {placed.map(({ b, s, w, lane, inside, labelLeft }) => {
+                  {placed.map(({ b, s, w, lane, mode, labelLeft }) => {
                     const isBlock = b.service_name === "Blocked time";
                     const who = b.customer_name ? b.customer_name.split(" ")[0] : null;
                     const cls = isBlock ? "blocked" : b.status;
                     const tip = `${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`;
-                    const label = (
-                      <>
-                        <b>{isBlock ? "Blocked" : b.service_name}</b>
-                        <span>
-                          {fmt(b.start_ts)}
-                          {who && !isBlock ? ` · ${who}` : ""}
-                        </span>
-                      </>
-                    );
+                    const shortTime = fmt(b.start_ts).replace(/ [ap]m$/, "");
+                    const label =
+                      mode === "compact" ? (
+                        <>
+                          <b>{isBlock ? "Blocked" : b.service_name}</b>
+                          <span>{shortTime}</span>
+                        </>
+                      ) : (
+                        <>
+                          <b>{isBlock ? "Blocked" : b.service_name}</b>
+                          <span>
+                            {fmt(b.start_ts)}
+                            {who && !isBlock ? ` · ${who}` : ""}
+                          </span>
+                        </>
+                      );
                     return (
                       <div key={b.id}>
                         <div
-                          className={`tl-block ${cls}${inside ? "" : " slim"}`}
+                          className={`tl-block ${cls}${mode === "tag" ? " slim" : ""}${mode === "compact" ? " compact" : ""}`}
                           style={{
                             left: `${s}%`,
                             width: `${w}%`,
@@ -294,9 +313,9 @@ function Timeline({
                           title={tip}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {inside && label}
+                          {mode !== "tag" && label}
                         </div>
-                        {!inside && (
+                        {mode === "tag" && (
                           <div
                             className={`tl-tag ${cls}${labelLeft ? " left" : ""}`}
                             style={{
