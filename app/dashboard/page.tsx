@@ -104,6 +104,17 @@ function BookingCard({ b, fmt }: { b: Booking; fmt: (ts: string) => string }) {
   );
 }
 
+const AVA_COLORS = ["#149c60", "#3c68c0", "#b0642f", "#7d5bb5", "#c04f6e", "#2f8f9c"];
+const avaColor = (name: string) =>
+  AVA_COLORS[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVA_COLORS.length];
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter((w) => w && !w.startsWith("("))
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+
 function Timeline({
   staff,
   allStaffCount,
@@ -137,8 +148,13 @@ function Timeline({
   for (let h = Math.ceil(axis.open / 60); h <= Math.floor(axis.close / 60); h++) hourTicks.push(h * 60);
   const hourLabel = (min: number) => {
     const h = Math.floor(min / 60);
-    return `${h % 12 === 0 ? 12 : h % 12}${h >= 12 ? "p" : "a"}`;
+    return `${h % 12 === 0 ? 12 : h % 12} ${h >= 12 ? "PM" : "AM"}`;
   };
+
+  // Every block is at least MIN_W% wide so its label stays readable; when two
+  // bookings would visually collide, the later one drops to a lane below.
+  const MIN_W = 14;
+  const LANE_H = 46;
   const unassigned = bookings.filter((b) => !b.staff_name);
   const rows: { name: string; items: Booking[] }[] = [
     ...(unassigned.length ? [{ name: "Unassigned", items: unassigned }] : []),
@@ -146,9 +162,9 @@ function Timeline({
   ];
 
   return (
-    <div className="db-card" style={{ padding: "14px 16px" }}>
+    <div className="db-card" style={{ padding: "6px 16px 12px" }}>
       {allStaffCount > 8 && (
-        <div className="row" style={{ marginBottom: 10 }}>
+        <div className="row" style={{ margin: "10px 0" }}>
           <input
             placeholder="Filter team…"
             value={staffFilter}
@@ -162,9 +178,9 @@ function Timeline({
       )}
       <div className="tl-scroll">
         <div className="tl">
-          <div className="tl-row tl-head">
+          <div className="tl-row head">
             <div className="tl-name" />
-            <div className="tl-track">
+            <div className="tl-track" style={{ minHeight: 30 }}>
               {hourTicks.map((m) => (
                 <span key={m} className="tl-tick" style={{ left: `${pct(m)}%` }}>
                   {hourLabel(m)}
@@ -172,36 +188,75 @@ function Timeline({
               ))}
             </div>
           </div>
-          {rows.map((row) => (
-            <div className="tl-row" key={row.name}>
-              <div className="tl-name" title={row.name}>{row.name}</div>
-              <div className="tl-track">
-                {hourTicks.map((m) => (
-                  <i key={m} className="tl-grid" style={{ left: `${pct(m)}%` }} />
-                ))}
-                {isToday && tzNowMin > axis.open && tzNowMin < axis.close && (
-                  <i className="tl-now" style={{ left: `${pct(tzNowMin)}%` }} />
-                )}
-                {row.items.map((b) => {
-                  const s = bookMin(b.start_ts);
-                  const e = bookMin(b.end_ts);
-                  const isBlock = b.service_name === "Blocked time";
-                  const w = Math.max(pct(e) - pct(s), 2.5);
-                  return (
-                    <div
-                      key={b.id}
-                      className={`tl-block ${isBlock ? "blocked" : b.status}`}
-                      style={{ left: `${pct(s)}%`, width: `${w}%` }}
-                      title={`${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`}
-                    >
-                      {w >= 3.5 && <span>{isBlock ? "Blocked" : b.service_name}</span>}
-                    </div>
-                  );
-                })}
-                {row.items.length === 0 && <span className="tl-free">free</span>}
+          {rows.map((row) => {
+            const sorted = [...row.items].sort((a, b) => a.start_ts.localeCompare(b.start_ts));
+            const laneEnds: number[] = [];
+            const placed = sorted.map((b) => {
+              const s = pct(bookMin(b.start_ts));
+              const w = Math.max(pct(bookMin(b.end_ts)) - s, MIN_W);
+              let lane = laneEnds.findIndex((endAt) => endAt <= s + 0.4);
+              if (lane === -1) {
+                lane = laneEnds.length;
+                laneEnds.push(0);
+              }
+              laneEnds[lane] = s + w;
+              return { b, s, w, lane };
+            });
+            const lanes = Math.max(laneEnds.length, 1);
+            const isUnassigned = row.name === "Unassigned";
+            return (
+              <div className="tl-row" key={row.name}>
+                <div className="tl-name">
+                  {isUnassigned ? (
+                    <span className="tl-ava" style={{ background: "var(--faint)" }}>?</span>
+                  ) : (
+                    <span className="tl-ava" style={{ background: avaColor(row.name) }}>
+                      {initials(row.name)}
+                    </span>
+                  )}
+                  <span className="tl-who">
+                    <b title={row.name}>{row.name}</b>
+                    <small>
+                      {row.items.length === 0
+                        ? "free all day"
+                        : `${row.items.length} booking${row.items.length !== 1 ? "s" : ""}`}
+                    </small>
+                  </span>
+                </div>
+                <div className="tl-track" style={{ minHeight: 14 + lanes * LANE_H }}>
+                  {hourTicks.map((m) => (
+                    <i key={m} className="tl-grid" style={{ left: `${pct(m)}%` }} />
+                  ))}
+                  {isToday && tzNowMin > axis.open && tzNowMin < axis.close && (
+                    <i className="tl-now" style={{ left: `${pct(tzNowMin)}%` }} />
+                  )}
+                  {placed.map(({ b, s, w, lane }) => {
+                    const isBlock = b.service_name === "Blocked time";
+                    const who = b.customer_name ? b.customer_name.split(" ")[0] : null;
+                    return (
+                      <div
+                        key={b.id}
+                        className={`tl-block ${isBlock ? "blocked" : b.status}`}
+                        style={{
+                          left: `${Math.min(s, 100 - w)}%`,
+                          width: `${w}%`,
+                          top: 7 + lane * LANE_H,
+                          height: LANE_H - 6,
+                        }}
+                        title={`${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`}
+                      >
+                        <b>{isBlock ? "Blocked" : b.service_name}</b>
+                        <span>
+                          {fmt(b.start_ts)}
+                          {who && !isBlock ? ` · ${who}` : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
