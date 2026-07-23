@@ -305,8 +305,6 @@ function Timeline({
                               top: 7 + lane * LANE_H,
                               height: LANE_H - 6,
                             }}
-                            title={tip}
-                            onClick={(e) => e.stopPropagation()}
                           >
                             {label}
                           </div>

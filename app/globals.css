@@ -264,6 +264,7 @@ html, body { margin: 0; padding: 0; }
   position: absolute; z-index: 1;
   display: flex; flex-direction: column; justify-content: center; gap: 1px;
   padding-left: 7px; color: #0c5236;
+  pointer-events: none; /* label floats over free time — clicks go to the track */
 }
 .db .tl-tag.left { align-items: flex-end; padding-left: 0; padding-right: 7px; }
 .db .tl-tag b { font-size: 11.5px; line-height: 1.25; white-space: nowrap; }
