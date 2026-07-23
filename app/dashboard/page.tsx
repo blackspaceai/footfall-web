@@ -17,8 +17,18 @@ type Booking = {
 };
 type Staff = { id: string; name: string; is_active: boolean };
 type HoursRow = { weekday: number; opens_at: string; closes_at: string };
+type Service = {
+  id: string;
+  name: string;
+  price_minor: number;
+  duration_minutes: number;
+  is_active: boolean;
+  item_type: string;
+};
 
 const toMin = (hm: string) => parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(3, 5), 10);
+const toHM = (min: number) =>
+  `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
 const todayStr = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
 
@@ -125,6 +135,7 @@ function Timeline({
   fmt,
   isToday,
   tzNowMin,
+  onPick,
 }: {
   staff: Staff[];
   allStaffCount: number;
@@ -135,6 +146,7 @@ function Timeline({
   fmt: (ts: string) => string;
   isToday: boolean;
   tzNowMin: number;
+  onPick: (staffId: string | null, minute: number) => void;
 }) {
   const span = Math.max(axis.close - axis.open, 60);
   const pct = (min: number) => Math.min(100, Math.max(0, ((min - axis.open) / span) * 100));
@@ -156,10 +168,22 @@ function Timeline({
   const MIN_W = 14;
   const LANE_H = 46;
   const unassigned = bookings.filter((b) => !b.staff_name);
-  const rows: { name: string; items: Booking[] }[] = [
-    ...(unassigned.length ? [{ name: "Unassigned", items: unassigned }] : []),
-    ...staff.map((s) => ({ name: s.name, items: bookings.filter((b) => b.staff_name === s.name) })),
+  const rows: { name: string; staffId: string | null; items: Booking[] }[] = [
+    ...(unassigned.length ? [{ name: "Unassigned", staffId: null, items: unassigned }] : []),
+    ...staff.map((s) => ({
+      name: s.name,
+      staffId: s.id,
+      items: bookings.filter((b) => b.staff_name === s.name),
+    })),
   ];
+
+  const pickAt = (e: React.MouseEvent<HTMLDivElement>, staffId: string | null) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = (e.clientX - rect.left) / rect.width;
+    const raw = axis.open + frac * span;
+    const snapped = Math.round(raw / 15) * 15;
+    onPick(staffId, Math.max(axis.open, Math.min(snapped, axis.close - 15)));
+  };
 
   return (
     <div className="db-card" style={{ padding: "6px 16px 12px" }}>
@@ -223,7 +247,12 @@ function Timeline({
                     </small>
                   </span>
                 </div>
-                <div className="tl-track" style={{ minHeight: 14 + lanes * LANE_H }}>
+                <div
+                  className="tl-track clickable"
+                  style={{ minHeight: 14 + lanes * LANE_H }}
+                  title="Click a free spot to add a booking"
+                  onClick={(e) => pickAt(e, row.staffId)}
+                >
                   {hourTicks.map((m) => (
                     <i key={m} className="tl-grid" style={{ left: `${pct(m)}%` }} />
                   ))}
@@ -244,6 +273,7 @@ function Timeline({
                           height: LANE_H - 6,
                         }}
                         title={`${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <b>{isBlock ? "Blocked" : b.service_name}</b>
                         <span>
@@ -263,6 +293,127 @@ function Timeline({
   );
 }
 
+function BookingModal({
+  businessId,
+  date,
+  staff,
+  services,
+  draft,
+  onClose,
+  onCreated,
+}: {
+  businessId: string;
+  date: string;
+  staff: Staff[];
+  services: Service[];
+  draft: { staffId: string; time: string };
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const [staffId, setStaffId] = useState(draft.staffId);
+  const [time, setTime] = useState(draft.time);
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      await api(`businesses/${businessId}/bookings`, {
+        method: "POST",
+        body: JSON.stringify({
+          service_id: serviceId,
+          staff_id: staffId || null,
+          date,
+          time,
+          customer_phone: phone.trim(),
+          customer_name: name.trim() || null,
+        }),
+      });
+      onCreated();
+    } catch (ex) {
+      setErr((ex as Error).message);
+      setBusy(false);
+    }
+  }
+
+  const dateLabel = new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
+  return (
+    <div className="db-overlay" onClick={onClose}>
+      <div className="db-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>New booking · {dateLabel}</h3>
+        <form onSubmit={submit}>
+          <label>
+            Service
+            <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} required>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — {s.duration_minutes} min · {rupees(s.price_minor)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="row" style={{ alignItems: "stretch" }}>
+            <label style={{ flex: 1 }}>
+              Time
+              <input
+                type="time"
+                value={time}
+                step={900}
+                onChange={(e) => setTime(e.target.value)}
+                required
+              />
+            </label>
+            <label style={{ flex: 1 }}>
+              With
+              <select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+                <option value="">Anyone free</option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Customer WhatsApp number
+            <input
+              placeholder="91XXXXXXXXXX"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              minLength={10}
+            />
+          </label>
+          <label>
+            Customer name (optional)
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          {err && <p style={{ color: "#b3442e", fontSize: 13, margin: 0 }}>{err}</p>}
+          <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }}>
+            <button type="button" className="btn ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="btn" disabled={busy || !serviceId}>
+              {busy ? "…" : "Add booking"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function TodayPage() {
   const { business, loaded, error, refresh } = useBusiness();
   const [date, setDate] = useState(todayStr());
@@ -271,12 +422,19 @@ export default function TodayPage() {
   const [view, setView] = useState<"columns" | "list">("columns");
   const [axis, setAxis] = useState<{ open: number; close: number }>({ open: 540, close: 1260 });
   const [staffFilter, setStaffFilter] = useState("");
+  const [services, setServices] = useState<Service[]>([]);
+  const [draft, setDraft] = useState<{ staffId: string; time: string } | null>(null);
 
   const load = useCallback(() => {
     if (!business) return;
     api<Booking[]>(`businesses/${business.id}/bookings?on=${date}`).then(setBookings);
     api<Staff[]>(`businesses/${business.id}/staff`).then((rows) =>
       setStaff(rows.filter((s) => s.is_active))
+    );
+    api<Service[]>(`businesses/${business.id}/services`).then((rows) =>
+      setServices(
+        rows.filter((s) => s.is_active && s.item_type !== "product" && s.name !== "Blocked time")
+      )
     );
     api<HoursRow[]>(`businesses/${business.id}/hours`).then((rows) => {
       if (rows.length) {
@@ -345,6 +503,25 @@ export default function TodayPage() {
           </div>
           <div className="row">
             <button
+              className="btn"
+              onClick={() => {
+                const nowMin = toMin(
+                  new Date().toLocaleTimeString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: business?.timezone ?? "Asia/Kolkata",
+                  })
+                );
+                const next = Math.min(
+                  Math.max(Math.ceil(nowMin / 15) * 15, axis.open),
+                  axis.close - 15
+                );
+                setDraft({ staffId: "", time: toHM(next) });
+              }}
+            >
+              + New booking
+            </button>
+            <button
               className="btn ghost"
               onClick={() => setView(view === "columns" ? "list" : "columns")}
             >
@@ -391,9 +568,11 @@ export default function TodayPage() {
         <div className="db-card">
           <div className="empty">Loading…</div>
         </div>
-      ) : all.length === 0 ? (
+      ) : all.length === 0 && staff.length === 0 ? (
         <div className="db-card">
-          <div className="empty">No bookings on this day yet.</div>
+          <div className="empty">
+            No bookings on this day yet. Add your team under Team to see the calendar.
+          </div>
         </div>
       ) : view === "columns" ? (
         <Timeline
@@ -415,6 +594,7 @@ export default function TodayPage() {
             });
             return toMin(now);
           })()}
+          onPick={(staffId, minute) => setDraft({ staffId: staffId ?? "", time: toHM(minute) })}
         />
       ) : (
         <div className="db-card">
@@ -450,6 +630,21 @@ export default function TodayPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {draft && business && (
+        <BookingModal
+          businessId={business.id}
+          date={date}
+          staff={staff}
+          services={services}
+          draft={draft}
+          onClose={() => setDraft(null)}
+          onCreated={() => {
+            setDraft(null);
+            load();
+          }}
+        />
       )}
     </>
   );

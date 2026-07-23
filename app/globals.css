@@ -233,3 +233,27 @@ html, body { margin: 0; padding: 0; }
   background: repeating-linear-gradient(45deg, #f0f2f0 0 7px, #e5e9e6 7px 14px);
   border-left-color: var(--line-strong); color: var(--muted); box-shadow: none;
 }
+
+/* ----- click-to-book ----- */
+.db .tl-track.clickable { cursor: copy; }
+.db .tl-row:not(.head):hover { background: #fafcfb; }
+.db .tl-block { cursor: default; }
+
+.db-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(8, 31, 22, 0.38);
+  display: grid; place-items: center; padding: 16px;
+}
+.db-modal {
+  background: #fff; border-radius: 16px; width: 400px; max-width: 100%;
+  padding: 20px 22px 22px;
+  box-shadow: 0 24px 60px rgba(8, 31, 22, 0.28);
+}
+.db-modal h3 { font-size: 16px; font-weight: 800; margin: 0 0 14px; }
+.db-modal form { display: flex; flex-direction: column; gap: 11px; }
+.db-modal label {
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: 11.5px; font-weight: 700; color: var(--muted);
+  letter-spacing: .02em;
+}
+.db-modal input, .db-modal select { width: 100%; }
