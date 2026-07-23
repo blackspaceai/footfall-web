@@ -9,7 +9,78 @@ type WaAccount = {
   phone_number_id: string | null;
   display_phone: string | null;
   status: string | null;
+  missed_call_url: string | null;
 };
+
+function GrowCard({ acct }: { acct: WaAccount | null }) {
+  const [qrReady, setQrReady] = useState(false);
+  const digits = acct?.display_phone ? acct.display_phone.replace(/[^0-9]/g, "") : null;
+  const waLink = digits ? `https://wa.me/${digits}?text=Hi!` : null;
+
+  useEffect(() => {
+    if (!waLink) return;
+    let alive = true;
+    import("qrcode").then((QR) => {
+      const canvas = document.getElementById("grow-qr") as HTMLCanvasElement | null;
+      if (canvas && alive) {
+        QR.toCanvas(canvas, waLink, { width: 180, margin: 1, color: { dark: "#0b3d2e", light: "#ffffff" } }).then(
+          () => setQrReady(true)
+        );
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [waLink]);
+
+  function download() {
+    const canvas = document.getElementById("grow-qr") as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.download = "footfall-book-on-whatsapp-qr.png";
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  }
+
+  return (
+    <div className="db-card" style={{ maxWidth: 640 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Grow</div>
+      {!waLink ? (
+        <p className="sub" style={{ margin: 0 }}>Connect a WhatsApp number to unlock the booking QR.</p>
+      ) : (
+        <div className="row" style={{ alignItems: "flex-start", gap: 20 }}>
+          <div style={{ textAlign: "center" }}>
+            <canvas id="grow-qr" style={{ borderRadius: 10, border: "1px solid var(--line)" }} />
+            <div>
+              <button className="btn ghost" onClick={download} disabled={!qrReady} style={{ marginTop: 8 }}>
+                Download QR
+              </button>
+            </div>
+          </div>
+          <div style={{ flex: 1, fontSize: 13.5, lineHeight: 1.6 }}>
+            <b>“Book on WhatsApp” QR</b>
+            <p style={{ color: "var(--muted)", margin: "4px 0 10px" }}>
+              Print it for the counter, shop door, or Instagram bio. One scan opens a chat with
+              your AI receptionist: <span style={{ color: "var(--emerald)", fontWeight: 700 }}>{waLink}</span>
+            </p>
+            {acct?.missed_call_url && (
+              <>
+                <b>Missed-call rescue</b>
+                <p style={{ color: "var(--muted)", margin: "4px 0 0" }}>
+                  Give this webhook URL to your telephony provider (Exotel, Knowlarity…) for
+                  unanswered calls — callers instantly get a WhatsApp from the agent:
+                </p>
+                <code style={{ display: "block", fontSize: 11, background: "var(--paper)", padding: "8px 10px", borderRadius: 8, marginTop: 6, wordBreak: "break-all" }}>
+                  {acct.missed_call_url}
+                </code>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function WhatsAppCard({ businessId }: { businessId: string }) {
   const [acct, setAcct] = useState<WaAccount | null>(null);
@@ -124,6 +195,7 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
 type BusinessFull = {
   id: string;
   name: string;
+  review_link: string | null;
   category: string;
   owner_wa_phone: string | null;
   languages: string[] | null;
@@ -142,10 +214,12 @@ const LANGUAGE_MODES: { value: string; label: string; hint: string }[] = [
 export default function SettingsPage() {
   const { business, error } = useBusiness();
   const [full, setFull] = useState<BusinessFull | null>(null);
+  const [acct, setAcct] = useState<WaAccount | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [langMode, setLangMode] = useState("en,hi");
   const [notes, setNotes] = useState("");
+  const [reviewLink, setReviewLink] = useState("");
   const [live, setLive] = useState(true);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
@@ -153,6 +227,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!business) return;
+    api<WaAccount>(`businesses/${business.id}/wa-account`).then(setAcct);
     api<BusinessFull[]>("businesses").then((rows) => {
       const b = rows.find((r) => r.id === business.id);
       if (!b) return;
@@ -160,6 +235,7 @@ export default function SettingsPage() {
       setName(b.name);
       setPhone(b.owner_wa_phone ?? "");
       setNotes(b.agent_notes ?? "");
+      setReviewLink(b.review_link ?? "");
       setLive(b.is_live);
       const joined = (b.languages ?? ["en", "hi"]).join(",");
       setLangMode(LANGUAGE_MODES.some((m) => m.value === joined) ? joined : "en,hi");
@@ -178,6 +254,7 @@ export default function SettingsPage() {
           owner_wa_phone: phone.trim() || null,
           languages: langMode.split(","),
           agent_notes: notes.trim() || null,
+          review_link: reviewLink.trim() || null,
           is_live: live,
         }),
       });
@@ -198,6 +275,8 @@ export default function SettingsPage() {
       <p className="sub">How your receptionist behaves. Changes apply to the next message.</p>
 
       <WhatsAppCard businessId={full.id} />
+
+      <GrowCard acct={acct} />
 
       <div className="db-card" style={{ maxWidth: 640 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -269,6 +348,16 @@ export default function SettingsPage() {
               placeholder="Address, parking, UPI id, house rules — anything it should know."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+            />
+          </label>
+
+          <label style={{ fontSize: 13, fontWeight: 700 }}>
+            Google review link
+            <input
+              style={{ display: "block", width: "100%", marginTop: 6 }}
+              placeholder="https://g.page/r/…/review — customers get this 2h after each visit"
+              value={reviewLink}
+              onChange={(e) => setReviewLink(e.target.value)}
             />
           </label>
 

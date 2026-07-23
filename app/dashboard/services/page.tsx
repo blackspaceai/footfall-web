@@ -11,6 +11,7 @@ type Service = {
   price_minor: number;
   duration_minutes: number;
   is_active: boolean;
+  rebook_days: number | null;
 };
 
 export default function ServicesPage() {
@@ -20,6 +21,7 @@ export default function ServicesPage() {
   const [type, setType] = useState<"service" | "product">("service");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("30");
+  const [rebookDays, setRebookDays] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -41,6 +43,7 @@ export default function ServicesPage() {
           item_type: type,
           price_minor: Math.round(parseFloat(price) * 100),
           duration_minutes: type === "product" ? 0 : parseInt(duration || "30", 10),
+          rebook_days: rebookDays ? parseInt(rebookDays, 10) : null,
         }),
       });
       setName("");
@@ -98,15 +101,26 @@ export default function ServicesPage() {
             style={{ width: 110 }}
           />
           {type === "service" && (
-            <input
-              placeholder="Minutes"
-              type="number"
-              min="5"
-              step="5"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              style={{ width: 100 }}
-            />
+            <>
+              <input
+                placeholder="Minutes"
+                type="number"
+                min="5"
+                step="5"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                style={{ width: 100 }}
+              />
+              <input
+                placeholder="Rebook after (days)"
+                title="Send a 'time for your next visit' nudge this many days after a visit. Blank = off."
+                type="number"
+                min="1"
+                value={rebookDays}
+                onChange={(e) => setRebookDays(e.target.value)}
+                style={{ width: 150 }}
+              />
+            </>
           )}
           <button className="btn" onClick={add} disabled={busy || !name.trim() || !price}>
             Add
@@ -128,12 +142,13 @@ export default function ServicesPage() {
                 <th>Type</th>
                 <th>Price</th>
                 <th>Duration</th>
+                <th>Rebook nudge</th>
                 <th>Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rows.filter((r) => r.name !== "Blocked time").map((r) => (
                 <tr key={r.id} style={{ opacity: r.is_active ? 1 : 0.55 }}>
                   <td>{r.name}</td>
                   <td>
@@ -141,6 +156,7 @@ export default function ServicesPage() {
                   </td>
                   <td>{rupees(r.price_minor)}</td>
                   <td>{r.item_type === "product" ? "—" : `${r.duration_minutes} min`}</td>
+                  <td>{r.rebook_days ? `${r.rebook_days} days` : "—"}</td>
                   <td>
                     <span className={`pill ${r.is_active ? "confirmed" : "off"}`}>
                       {r.is_active ? "live" : "hidden"}
