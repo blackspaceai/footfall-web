@@ -12,6 +12,7 @@ type Booking = {
   customer_name: string | null;
   customer_phone: string;
   service_name: string;
+  staff_id: string | null;
   staff_name: string | null;
   price_minor: number;
 };
@@ -136,6 +137,7 @@ function Timeline({
   isToday,
   tzNowMin,
   onPick,
+  onOpen,
 }: {
   staff: Staff[];
   allStaffCount: number;
@@ -147,6 +149,7 @@ function Timeline({
   isToday: boolean;
   tzNowMin: number;
   onPick: (staffId: string | null, minute: number) => void;
+  onOpen: (b: Booking) => void;
 }) {
   const span = Math.max(axis.close - axis.open, 60);
   const pct = (min: number) => Math.min(100, Math.max(0, ((min - axis.open) / span) * 100));
@@ -311,7 +314,10 @@ function Timeline({
                             height: LANE_H - 6,
                           }}
                           title={tip}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpen(b);
+                          }}
                         >
                           {mode !== "tag" && label}
                         </div>
@@ -462,6 +468,154 @@ function BookingModal({
   );
 }
 
+function EditBookingModal({
+  booking,
+  date,
+  staff,
+  fmt,
+  onClose,
+  onDone,
+}: {
+  booking: Booking;
+  date: string;
+  staff: Staff[];
+  fmt: (ts: string) => string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const isBlock = booking.service_name === "Blocked time";
+  const startHM = new Date(booking.start_ts).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  });
+  const [time, setTime] = useState(startHM);
+  const [staffId, setStaffId] = useState(booking.staff_id ?? "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  async function patch(body: Record<string, unknown>) {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api(`bookings/${booking.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      onDone();
+    } catch (ex) {
+      setErr((ex as Error).message);
+      setBusy(false);
+    }
+  }
+
+  function save() {
+    const body: Record<string, unknown> = {};
+    if (time !== startHM) {
+      body.date = date;
+      body.time = time;
+    }
+    if (staffId && staffId !== (booking.staff_id ?? "")) body.staff_id = staffId;
+    if (Object.keys(body).length === 0) {
+      onClose();
+      return;
+    }
+    patch(body);
+  }
+
+  return (
+    <div className="db-overlay" onClick={onClose}>
+      <div className="db-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>
+          {isBlock ? "Blocked time" : booking.service_name}
+          <span className={`pill ${booking.status}`} style={{ marginLeft: 10 }}>
+            {booking.status.replace("_", "-")}
+          </span>
+        </h3>
+        {!isBlock && (
+          <p className="sub" style={{ marginTop: -8, marginBottom: 14 }}>
+            {booking.customer_name ?? booking.customer_phone} · {rupees(booking.price_minor)} ·{" "}
+            {fmt(booking.start_ts)}–{fmt(booking.end_ts)}
+          </p>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            save();
+          }}
+        >
+          <div className="row" style={{ alignItems: "stretch" }}>
+            <label style={{ flex: 1 }}>
+              Time
+              <input
+                type="time"
+                value={time}
+                step={300}
+                onChange={(e) => setTime(e.target.value)}
+                required
+              />
+            </label>
+            <label style={{ flex: 1 }}>
+              With
+              <select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+                {!booking.staff_id && <option value="">Unassigned</option>}
+                {staff.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {err && <p style={{ color: "#b3442e", fontSize: 13, margin: 0 }}>{err}</p>}
+          <div className="row" style={{ justifyContent: "space-between", marginTop: 4 }}>
+            <div className="row">
+              {!isBlock && booking.status === "confirmed" && (
+                <>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={busy}
+                    onClick={() => patch({ status: "completed" })}
+                  >
+                    Completed
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={busy}
+                    onClick={() => patch({ status: "no_show" })}
+                  >
+                    No-show
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className="btn danger"
+                disabled={busy}
+                onClick={() => {
+                  if (confirmCancel) patch({ status: "cancelled" });
+                  else setConfirmCancel(true);
+                }}
+              >
+                {isBlock
+                  ? confirmCancel
+                    ? "Really remove?"
+                    : "Remove block"
+                  : confirmCancel
+                    ? "Really cancel?"
+                    : "Cancel booking"}
+              </button>
+            </div>
+            <button className="btn" disabled={busy}>
+              {busy ? "…" : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function TodayPage() {
   const { business, loaded, error, refresh } = useBusiness();
   const [date, setDate] = useState(todayStr());
@@ -472,6 +626,7 @@ export default function TodayPage() {
   const [staffFilter, setStaffFilter] = useState("");
   const [services, setServices] = useState<Service[]>([]);
   const [draft, setDraft] = useState<{ staffId: string; time: string } | null>(null);
+  const [editing, setEditing] = useState<Booking | null>(null);
 
   const load = useCallback(() => {
     if (!business) return;
@@ -643,6 +798,7 @@ export default function TodayPage() {
             return toMin(now);
           })()}
           onPick={(staffId, minute) => setDraft({ staffId: staffId ?? "", time: toHM(minute) })}
+          onOpen={setEditing}
         />
       ) : (
         <div className="db-card">
@@ -659,7 +815,11 @@ export default function TodayPage() {
             </thead>
             <tbody>
               {all.map((b) => (
-                <tr key={b.id}>
+                <tr
+                  key={b.id}
+                  onClick={() => b.status !== "cancelled" && setEditing(b)}
+                  style={{ cursor: b.status !== "cancelled" ? "pointer" : undefined }}
+                >
                   <td>
                     {fmt(b.start_ts)}–{fmt(b.end_ts)}
                   </td>
@@ -678,6 +838,20 @@ export default function TodayPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {editing && business && (
+        <EditBookingModal
+          booking={editing}
+          date={date}
+          staff={staff}
+          fmt={fmt}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            load();
+          }}
+        />
       )}
 
       {draft && business && (

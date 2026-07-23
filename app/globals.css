@@ -238,7 +238,7 @@ html, body { margin: 0; padding: 0; }
 /* ----- click-to-book ----- */
 .db .tl-track.clickable { cursor: copy; }
 .db .tl-row:not(.head):hover { background: #fafcfb; }
-.db .tl-block { cursor: default; }
+.db .tl-block { cursor: pointer; }
 
 .db-overlay {
   position: fixed; inset: 0; z-index: 60;
@@ -279,3 +279,7 @@ html, body { margin: 0; padding: 0; }
 .db .tl-block.compact { padding: 2px 4px; }
 .db .tl-block.compact b { font-size: 9.5px; letter-spacing: -0.015em; }
 .db .tl-block.compact > span { font-size: 9px; }
+
+.db .btn.danger { background: #fff; color: #b3442e; border: 1px solid #ecccc2; }
+.db .btn.danger:hover { background: #fdf3f0; }
+.db-modal h3 .pill { vertical-align: 2px; }
