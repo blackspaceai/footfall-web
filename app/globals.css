@@ -257,3 +257,18 @@ html, body { margin: 0; padding: 0; }
   letter-spacing: .02em;
 }
 .db-modal input, .db-modal select { width: 100%; }
+
+/* narrow bookings: true-width bar, label beside it */
+.db .tl-block.slim { padding: 0; border-radius: 5px; min-width: 8px; }
+.db .tl-tag {
+  position: absolute; z-index: 1;
+  display: flex; flex-direction: column; justify-content: center; gap: 1px;
+  padding-left: 7px; color: #0c5236;
+}
+.db .tl-tag.left { align-items: flex-end; padding-left: 0; padding-right: 7px; }
+.db .tl-tag b { font-size: 11.5px; line-height: 1.25; white-space: nowrap; }
+.db .tl-tag > span { font-size: 10px; font-weight: 600; opacity: 0.72; white-space: nowrap; }
+.db .tl-tag.no_show { color: #8c2f1c; }
+.db .tl-tag.completed { color: #27417a; }
+.db .tl-tag.cancelled { color: var(--muted); text-decoration: line-through; }
+.db .tl-tag.blocked { color: var(--muted); }

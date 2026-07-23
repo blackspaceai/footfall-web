@@ -163,9 +163,11 @@ function Timeline({
     return `${h % 12 === 0 ? 12 : h % 12} ${h >= 12 ? "PM" : "AM"}`;
   };
 
-  // Every block is at least MIN_W% wide so its label stays readable; when two
-  // bookings would visually collide, the later one drops to a lane below.
+  // Bars span the booking's true duration. When a bar is too narrow to hold
+  // its label (< MIN_W), the text sits beside it instead, and the combined
+  // footprint decides when a colliding booking drops to a lane below.
   const MIN_W = 14;
+  const LABEL_W = 13;
   const LANE_H = 46;
   const unassigned = bookings.filter((b) => !b.staff_name);
   const rows: { name: string; staffId: string | null; items: Booking[] }[] = [
@@ -217,14 +219,20 @@ function Timeline({
             const laneEnds: number[] = [];
             const placed = sorted.map((b) => {
               const s = pct(bookMin(b.start_ts));
-              const w = Math.max(pct(bookMin(b.end_ts)) - s, MIN_W);
-              let lane = laneEnds.findIndex((endAt) => endAt <= s + 0.4);
+              const w = Math.max(pct(bookMin(b.end_ts)) - s, 1);
+              const inside = w >= MIN_W;
+              // Narrow bars carry their label outside — to the right, or to
+              // the left when the bar sits against the end of the day.
+              const labelLeft = !inside && s + w + LABEL_W > 100;
+              const foot = inside ? w : w + LABEL_W;
+              const footStart = labelLeft ? s - LABEL_W : s;
+              let lane = laneEnds.findIndex((endAt) => endAt <= footStart + 0.4);
               if (lane === -1) {
                 lane = laneEnds.length;
                 laneEnds.push(0);
               }
-              laneEnds[lane] = s + w;
-              return { b, s, w, lane };
+              laneEnds[lane] = footStart + foot;
+              return { b, s, w, lane, inside, labelLeft };
             });
             const lanes = Math.max(laneEnds.length, 1);
             const isUnassigned = row.name === "Unassigned";
@@ -259,27 +267,50 @@ function Timeline({
                   {isToday && tzNowMin > axis.open && tzNowMin < axis.close && (
                     <i className="tl-now" style={{ left: `${pct(tzNowMin)}%` }} />
                   )}
-                  {placed.map(({ b, s, w, lane }) => {
+                  {placed.map(({ b, s, w, lane, inside, labelLeft }) => {
                     const isBlock = b.service_name === "Blocked time";
                     const who = b.customer_name ? b.customer_name.split(" ")[0] : null;
-                    return (
-                      <div
-                        key={b.id}
-                        className={`tl-block ${isBlock ? "blocked" : b.status}`}
-                        style={{
-                          left: `${Math.min(s, 100 - w)}%`,
-                          width: `${w}%`,
-                          top: 7 + lane * LANE_H,
-                          height: LANE_H - 6,
-                        }}
-                        title={`${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                    const cls = isBlock ? "blocked" : b.status;
+                    const tip = `${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`;
+                    const label = (
+                      <>
                         <b>{isBlock ? "Blocked" : b.service_name}</b>
                         <span>
                           {fmt(b.start_ts)}
                           {who && !isBlock ? ` · ${who}` : ""}
                         </span>
+                      </>
+                    );
+                    return (
+                      <div key={b.id}>
+                        <div
+                          className={`tl-block ${cls}${inside ? "" : " slim"}`}
+                          style={{
+                            left: `${s}%`,
+                            width: `${w}%`,
+                            top: 7 + lane * LANE_H,
+                            height: LANE_H - 6,
+                          }}
+                          title={tip}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {inside && label}
+                        </div>
+                        {!inside && (
+                          <div
+                            className={`tl-tag ${cls}${labelLeft ? " left" : ""}`}
+                            style={{
+                              left: labelLeft ? undefined : `${s + w}%`,
+                              right: labelLeft ? `${100 - s}%` : undefined,
+                              top: 7 + lane * LANE_H,
+                              height: LANE_H - 6,
+                            }}
+                            title={tip}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {label}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
