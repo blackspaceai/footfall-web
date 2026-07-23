@@ -16,6 +16,9 @@ type Booking = {
   price_minor: number;
 };
 type Staff = { id: string; name: string; is_active: boolean };
+type HoursRow = { weekday: number; opens_at: string; closes_at: string };
+
+const toMin = (hm: string) => parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(3, 5), 10);
 
 const todayStr = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
 
@@ -101,12 +104,118 @@ function BookingCard({ b, fmt }: { b: Booking; fmt: (ts: string) => string }) {
   );
 }
 
+function Timeline({
+  staff,
+  allStaffCount,
+  staffFilter,
+  setStaffFilter,
+  bookings,
+  axis,
+  fmt,
+  isToday,
+  tzNowMin,
+}: {
+  staff: Staff[];
+  allStaffCount: number;
+  staffFilter: string;
+  setStaffFilter: (v: string) => void;
+  bookings: Booking[];
+  axis: { open: number; close: number };
+  fmt: (ts: string) => string;
+  isToday: boolean;
+  tzNowMin: number;
+}) {
+  const span = Math.max(axis.close - axis.open, 60);
+  const pct = (min: number) => Math.min(100, Math.max(0, ((min - axis.open) / span) * 100));
+  const bookMin = (ts: string) => {
+    const [h, m] = new Date(ts)
+      .toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })
+      .split(":");
+    return parseInt(h, 10) * 60 + parseInt(m, 10);
+  };
+  const hourTicks: number[] = [];
+  for (let h = Math.ceil(axis.open / 60); h <= Math.floor(axis.close / 60); h++) hourTicks.push(h * 60);
+  const hourLabel = (min: number) => {
+    const h = Math.floor(min / 60);
+    return `${h % 12 === 0 ? 12 : h % 12}${h >= 12 ? "p" : "a"}`;
+  };
+  const unassigned = bookings.filter((b) => !b.staff_name);
+  const rows: { name: string; items: Booking[] }[] = [
+    ...(unassigned.length ? [{ name: "Unassigned", items: unassigned }] : []),
+    ...staff.map((s) => ({ name: s.name, items: bookings.filter((b) => b.staff_name === s.name) })),
+  ];
+
+  return (
+    <div className="db-card" style={{ padding: "14px 16px" }}>
+      {allStaffCount > 8 && (
+        <div className="row" style={{ marginBottom: 10 }}>
+          <input
+            placeholder="Filter team…"
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
+            style={{ maxWidth: 220 }}
+          />
+          <span style={{ fontSize: 12, color: "var(--faint)" }}>
+            {staff.length} of {allStaffCount} shown
+          </span>
+        </div>
+      )}
+      <div className="tl-scroll">
+        <div className="tl">
+          <div className="tl-row tl-head">
+            <div className="tl-name" />
+            <div className="tl-track">
+              {hourTicks.map((m) => (
+                <span key={m} className="tl-tick" style={{ left: `${pct(m)}%` }}>
+                  {hourLabel(m)}
+                </span>
+              ))}
+            </div>
+          </div>
+          {rows.map((row) => (
+            <div className="tl-row" key={row.name}>
+              <div className="tl-name" title={row.name}>{row.name}</div>
+              <div className="tl-track">
+                {hourTicks.map((m) => (
+                  <i key={m} className="tl-grid" style={{ left: `${pct(m)}%` }} />
+                ))}
+                {isToday && tzNowMin > axis.open && tzNowMin < axis.close && (
+                  <i className="tl-now" style={{ left: `${pct(tzNowMin)}%` }} />
+                )}
+                {row.items.map((b) => {
+                  const s = bookMin(b.start_ts);
+                  const e = bookMin(b.end_ts);
+                  const isBlock = b.service_name === "Blocked time";
+                  const w = Math.max(pct(e) - pct(s), 2.5);
+                  return (
+                    <div
+                      key={b.id}
+                      className={`tl-block ${isBlock ? "blocked" : b.status}`}
+                      style={{ left: `${pct(s)}%`, width: `${w}%` }}
+                      title={`${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`}
+                    >
+                      {w >= 3.5 && <span>{isBlock ? "Blocked" : b.service_name}</span>}
+                    </div>
+                  );
+                })}
+                {row.items.length === 0 && <span className="tl-free">free</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TodayPage() {
   const { business, loaded, error, refresh } = useBusiness();
   const [date, setDate] = useState(todayStr());
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [view, setView] = useState<"columns" | "list">("columns");
+  const [axis, setAxis] = useState<{ open: number; close: number }>({ open: 540, close: 1260 });
+  const [staffFilter, setStaffFilter] = useState("");
 
   const load = useCallback(() => {
     if (!business) return;
@@ -114,6 +223,14 @@ export default function TodayPage() {
     api<Staff[]>(`businesses/${business.id}/staff`).then((rows) =>
       setStaff(rows.filter((s) => s.is_active))
     );
+    api<HoursRow[]>(`businesses/${business.id}/hours`).then((rows) => {
+      if (rows.length) {
+        setAxis({
+          open: Math.min(...rows.map((r) => toMin(r.opens_at))),
+          close: Math.max(...rows.map((r) => toMin(r.closes_at))),
+        });
+      }
+    });
   }, [business, date]);
   useEffect(load, [load]);
 
@@ -153,7 +270,7 @@ export default function TodayPage() {
   return (
     <>
       <h1>{business ? business.name : "…"}</h1>
-      <p className="sub">The business calendar — one column per team member.</p>
+      <p className="sub">The business calendar — the whole team at a glance.</p>
 
       <div className="db-card">
         <div className="row" style={{ justifyContent: "space-between" }}>
@@ -224,40 +341,26 @@ export default function TodayPage() {
           <div className="empty">No bookings on this day yet.</div>
         </div>
       ) : view === "columns" ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(180px, 1fr))`,
-            gap: 12,
-            alignItems: "start",
-            overflowX: "auto",
-          }}
-        >
-          {columns.map((col) => (
-            <div key={col.title} className="db-card" style={{ marginBottom: 0, padding: 14 }}>
-              <div
-                style={{
-                  fontWeight: 800,
-                  fontSize: 13,
-                  marginBottom: 10,
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                {col.title}
-                <span style={{ color: "var(--muted)", fontWeight: 600 }}>{col.items.length}</span>
-              </div>
-              {col.items.length === 0 ? (
-                <div style={{ fontSize: 12.5, color: "var(--muted)" }}>Free all day</div>
-              ) : (
-                col.items
-                  .slice()
-                  .sort((a, b) => a.start_ts.localeCompare(b.start_ts))
-                  .map((b) => <BookingCard key={b.id} b={b} fmt={fmt} />)
-              )}
-            </div>
-          ))}
-        </div>
+        <Timeline
+          staff={staff.filter(
+            (s) => !staffFilter || s.name.toLowerCase().includes(staffFilter.toLowerCase())
+          )}
+          allStaffCount={staff.length}
+          staffFilter={staffFilter}
+          setStaffFilter={setStaffFilter}
+          bookings={onCalendar}
+          axis={axis}
+          fmt={fmt}
+          isToday={date === todayStr()}
+          tzNowMin={(() => {
+            const now = new Date().toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: business?.timezone ?? "Asia/Kolkata",
+            });
+            return toMin(now);
+          })()}
+        />
       ) : (
         <div className="db-card">
           <table>
