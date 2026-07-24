@@ -92,6 +92,7 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [msgIsError, setMsgIsError] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const load = () =>
     api<WaAccount>(`businesses/${businessId}/wa-account`).then((a) => {
@@ -102,6 +103,36 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId]);
+
+  async function testConnection() {
+    setTesting(true);
+    setMsg(null);
+    try {
+      const r = await api<{
+        ok: boolean;
+        detail?: string;
+        display_phone_number?: string;
+        verified_name?: string;
+        quality_rating?: string;
+      }>(`businesses/${businessId}/wa-account/test`, { method: "POST" });
+      if (r.ok) {
+        setMsgIsError(false);
+        setMsg(
+          `Live ✓ ${r.display_phone_number ?? ""}${
+            r.verified_name ? ` · ${r.verified_name}` : ""
+          }${r.quality_rating ? ` · quality ${r.quality_rating}` : ""}`
+        );
+      } else {
+        setMsgIsError(true);
+        setMsg(r.detail ?? "Connection test failed.");
+      }
+    } catch (e) {
+      setMsgIsError(true);
+      setMsg((e as Error).message);
+    } finally {
+      setTesting(false);
+    }
+  }
 
   async function connect() {
     setBusy(true);
@@ -142,9 +173,16 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
             </p>
           )}
           {!editing ? (
-            <button className="btn ghost" onClick={() => setEditing(true)}>
-              Update connection
-            </button>
+            <div className="row">
+              <button className="btn ghost" onClick={() => setEditing(true)}>
+                Update connection
+              </button>
+              {acct.connected && (
+                <button className="btn ghost" onClick={testConnection} disabled={testing}>
+                  {testing ? "Testing…" : "Test connection"}
+                </button>
+              )}
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <input
