@@ -21,38 +21,21 @@
   if (counterEl) counterEl.textContent = "₹0";
 
   /* ---------- CTAs ---------- */
+  /* Every "start free" CTA is a real <a href="/join"> now — let the browser
+     navigate natively. The hero input is a shortcut into the same form: it
+     carries the typed business name over as a query param so /join prefills it. */
 
   var input = T(281);
-  function goStart() {
-    var bar = document.getElementById("start");
-    if (bar) bar.scrollIntoView({ behavior: "smooth", block: "end" });
-    if (input) setTimeout(function () { input.focus(); }, 450);
-  }
-  var ctaTexts = ["Step in", "Connect my number →", "Start 14-day free trial",
-    "Start free — no card", "Start free — connect my number"];
-  Array.prototype.forEach.call(document.querySelectorAll("div,a"), function (el) {
-    if (el.children.length === 0 && ctaTexts.indexOf(el.textContent.trim()) !== -1) {
-      el.style.cursor = "pointer";
-      el.addEventListener("click", function (e) {
-        if (el.tagName === "A") e.preventDefault();
-        goStart();
-      });
-    }
-  });
-
-  function send() {
-    if (!input) return;
-    var name = input.value.trim();
-    if (!name) { input.focus(); return; }
-    var row = input.parentElement;
-    row.innerHTML = '<div style="flex:1;text-align:center;color:#7df2a8;font-size:15px;font-weight:700;padding:14px 0;">' +
-      "Thanks! Opening WhatsApp to set up “" + name.replace(/[<>&]/g, "") + "”…</div>";
-    window.open("https://wa.me/" + WA_NUMBER + "?text=" +
-      encodeURIComponent("Hi Footfall! I want to set up my business: " + name), "_blank");
+  function goJoin() {
+    var name = input ? input.value.trim() : "";
+    window.location.href = "/join" + (name ? "?business=" + encodeURIComponent(name) : "");
   }
   var sendBtn = T(282);
-  if (sendBtn) sendBtn.addEventListener("click", send);
-  if (input) input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+  if (sendBtn) {
+    sendBtn.style.cursor = "pointer";
+    sendBtn.addEventListener("click", goJoin);
+  }
+  if (input) input.addEventListener("keydown", function (e) { if (e.key === "Enter") goJoin(); });
 
   var waLinks = Array.prototype.filter.call(document.querySelectorAll("a"), function (a) {
     return a.textContent.trim() === "WhatsApp us";
