@@ -67,10 +67,15 @@ export default function InboxPage() {
 
   async function toggleMode() {
     if (!current) return;
-    await api(`conversations/${current.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: current.status === "human" ? "agent" : "human" }),
-    });
+    setSendErr(null);
+    try {
+      await api(`conversations/${current.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: current.status === "human" ? "agent" : "human" }),
+      });
+    } catch (e) {
+      setSendErr((e as Error).message);
+    }
     loadConvs();
   }
 

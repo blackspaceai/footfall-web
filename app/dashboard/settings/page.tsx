@@ -91,6 +91,7 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [msgIsError, setMsgIsError] = useState(false);
 
   const load = () =>
     api<WaAccount>(`businesses/${businessId}/wa-account`).then((a) => {
@@ -116,9 +117,11 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
         }),
       });
       setToken("");
+      setMsgIsError(false);
       setMsg("Connected — the agent answers this number now.");
       load();
     } catch (e) {
+      setMsgIsError(true);
       setMsg((e as Error).message);
     } finally {
       setBusy(false);
@@ -185,7 +188,11 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
               </div>
             </div>
           )}
-          {msg && <p style={{ fontSize: 13, margin: "10px 0 0", color: "#0f6e42" }}>{msg}</p>}
+          {msg && (
+            <p style={{ fontSize: 13, margin: "10px 0 0", color: msgIsError ? "#b3261e" : "#0f6e42" }}>
+              {msg}
+            </p>
+          )}
         </>
       )}
     </div>
