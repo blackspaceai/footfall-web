@@ -45,12 +45,14 @@ export const metadata: Metadata = {
     siteName: "Footfall",
     type: "website",
     locale: "en_IN",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Footfall — never miss another booking" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Footfall — WhatsApp AI receptionist & booking agent",
     description:
       "Your AI receptionist on WhatsApp. Answers in seconds, books the slot, chases no-shows. 14 days free.",
+    images: ["/og.png"],
   },
   robots: { index: true, follow: true },
 };
