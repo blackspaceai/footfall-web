@@ -751,6 +751,313 @@ export const VERTICALS: Vertical[] = [
       },
     ],
   },
+  {
+    slug: "photographers",
+    name: "Photographers",
+    singular: "photography business",
+    title: "Photographer AI — WhatsApp booking & enquiry agent for photographers | Footfall",
+    description:
+      "Footfall is the photographer's AI assistant on WhatsApp: answers package and pricing enquiries in seconds, books shoots and consults, and chases the leads you'd otherwise lose while shooting. 14 days free.",
+    keywords: [
+      "photographer ai",
+      "ai for photographers",
+      "photography booking software india",
+      "photographer whatsapp enquiry",
+      "wedding photographer booking app",
+      "photo studio booking whatsapp",
+      "shoot booking software",
+    ],
+    h1: "Every enquiry answered — even mid-shoot",
+    intro:
+      "Enquiries arrive while your eye is in the viewfinder, and photography leads go cold in hours. Footfall answers instantly on WhatsApp — packages, day rates, availability for a date — books the consult, and keeps the lead warm until you can talk properly.",
+    pains: [
+      {
+        title: "Leads die while you shoot",
+        body: "A wedding enquiry answered in 2 minutes converts far better than one answered next evening. Footfall replies instantly, every time — including Sundays and 11 pm.",
+      },
+      {
+        title: "\"Are you free on 14 Feb?\"",
+        body: "Date-availability questions answered against your real calendar, so you never double-book a wedding — and never lose one to a slow reply.",
+      },
+      {
+        title: "Packages explained, every time",
+        body: "Candid vs traditional, album add-ons, drone, pre-wedding — Footfall gives your exact packages and starting prices, then books a consult for the custom quote.",
+      },
+      {
+        title: "Advance and calendar in one place",
+        body: "Your shoot calendar, consults and enquiry history live together — no more scrolling three months of chats to find who asked about March.",
+      },
+    ],
+    chat: [
+      { from: "customer", text: "Pre-wedding shoot ka package kya hai? 12 Feb free ho?" },
+      { from: "footfall", text: "Pre-wedding packages start at ₹35,000 (half day, 2 outfits, 60 edited photos). 12 Feb is open! Shall I book a free 20-min call to plan the concept?" },
+      { from: "customer", text: "Haan, evening me" },
+      { from: "footfall", text: "Booked ✅ Call tomorrow 7:00 pm with Arjun. He'll share sample albums on the call. 📸" },
+    ],
+    faqs: [
+      {
+        q: "I shoot solo — can it handle my calendar?",
+        a: "Yes. Footfall books against your real availability, blocks full shoot days, and never offers a slot you can't take.",
+      },
+      {
+        q: "Can it quote wedding packages?",
+        a: "It shares your exact packages and starting prices, then books a consult for custom quotes — the way photography actually sells.",
+      },
+      {
+        q: "What about second shooters and a team?",
+        a: "Each team member has their own calendar, and you can charge a different rate per person if your senior shooter costs more.",
+      },
+      {
+        q: "Does it work for studios too?",
+        a: "Yes — studios use it for portfolio shoots, passport photos, and studio-hour bookings across multiple photographers.",
+      },
+    ],
+  },
+  {
+    slug: "creators",
+    name: "Content creators",
+    singular: "creator business",
+    title: "Creator AI — WhatsApp booking & brand-enquiry agent for creators | Footfall",
+    description:
+      "Footfall is the creator's AI assistant: answers brand collaboration and rate-card enquiries on WhatsApp in seconds, books calls and shoots, and makes sure no deal goes cold in your DMs. 14 days free.",
+    keywords: [
+      "creator ai",
+      "ai for content creators",
+      "influencer booking software",
+      "brand collaboration whatsapp",
+      "creator rate card enquiry",
+      "influencer management india",
+      "content creator booking app",
+    ],
+    h1: "Your DMs are a business. Staff them.",
+    intro:
+      "Brand enquiries, collab requests and shoot bookings pile up while you're filming, editing or simply living. Footfall answers on WhatsApp in seconds with your rates and availability, books the call, and makes sure a paying brand never waits three days for a reply.",
+    pains: [
+      {
+        title: "Brands move fast",
+        body: "Campaign briefs have deadlines. An instant, professional reply with your rates and availability wins deals that a late reply loses.",
+      },
+      {
+        title: "Rate card on demand",
+        body: "Reel, story set, YouTube integration, UGC bundle — Footfall shares your exact rates and deliverables without you retyping them for the hundredth time.",
+      },
+      {
+        title: "Shoots and calls, booked",
+        body: "Discovery calls, shoot days and content deadlines all land on one calendar, with reminders so nothing slips.",
+      },
+      {
+        title: "You stay the creative",
+        body: "Take over any conversation the moment it gets interesting — the AI handles logistics, you handle the relationship.",
+      },
+    ],
+    chat: [
+      { from: "customer", text: "Hi! We'd like to collab for a skincare launch. What are your reel rates?" },
+      { from: "footfall", text: "Thanks for reaching out! Instagram reel (1 x 30-60s, 1 revision, story shares) is ₹45,000. Bundles with a story set are ₹60,000. Shall I set up a 15-min call to discuss the brief?" },
+      { from: "customer", text: "Yes, tomorrow works" },
+      { from: "footfall", text: "Booked ✅ Tomorrow 4:00 pm. Please send the brief and deadline before the call — I'll pass it on. ✨" },
+    ],
+    faqs: [
+      {
+        q: "Will brands know it's an AI?",
+        a: "It replies professionally in your voice with your real rates. You can take over any conversation instantly — most brands just experience a fast, organised creator.",
+      },
+      {
+        q: "Can it hold different rates for different deliverables?",
+        a: "Yes — every deliverable is an item with its own rate and turnaround, and Footfall quotes exactly what you set.",
+      },
+      {
+        q: "Does it work with Instagram DMs?",
+        a: "Footfall runs on WhatsApp today — put your WhatsApp in your bio and route serious enquiries there, which is where deals get closed anyway.",
+      },
+      {
+        q: "I'm a solo creator — is this affordable?",
+        a: "₹1,499/month after 14 days free. One recovered brand deal pays for years.",
+      },
+    ],
+  },
+  {
+    slug: "musicians",
+    name: "Musicians & bands",
+    singular: "band",
+    title: "Musician AI — WhatsApp booking agent for bands, DJs & live acts | Footfall",
+    description:
+      "Footfall is the AI booking agent for musicians, live bands, singers and DJs: answers gig enquiries and rate questions on WhatsApp instantly, checks date availability and books the show. 14 days free.",
+    keywords: [
+      "musician ai",
+      "band booking software",
+      "ai booking agent for musicians",
+      "live band booking whatsapp",
+      "singer booking app india",
+      "dj booking software",
+      "event artist booking",
+    ],
+    h1: "The booking agent your band can actually afford",
+    intro:
+      "Gig enquiries come from wedding planners, cafés, corporates and college fests — usually at once, usually while you're on stage. Footfall answers on WhatsApp with your rates and date availability, holds the details, and books the show before someone else's band replies.",
+    pains: [
+      {
+        title: "Gigs go to whoever replies first",
+        body: "Event planners message five acts. The one that answers in minutes with a clear rate gets the gig — Footfall makes that you, every time.",
+      },
+      {
+        title: "\"Are you free on the 26th?\"",
+        body: "Date availability answered instantly against your real gig calendar. No double-booked Saturdays, no lost deposits.",
+      },
+      {
+        title: "Rates by set and format",
+        body: "Acoustic duo, full band, DJ set, 2-hour vs 4-hour — each has its own rate. Footfall quotes the right one instead of a vague \"depends\".",
+      },
+      {
+        title: "Solo artists and full line-ups",
+        body: "Whether it's you and a guitar or an eight-piece, each member's availability can be tracked so you only accept what you can actually play.",
+      },
+    ],
+    chat: [
+      { from: "customer", text: "Hi, need a live band for a sangeet on 26 Nov, around 3 hours" },
+      { from: "footfall", text: "26 Nov evening is open 🎸 Full band (4 pieces, 3 hours, own sound) is ₹85,000; acoustic trio is ₹45,000. Which suits the vibe?" },
+      { from: "customer", text: "Full band. Can we talk?" },
+      { from: "footfall", text: "Booked a call ✅ Today 6:30 pm with Rohit. He'll share past sangeet setlists and sound requirements. 🎶" },
+    ],
+    faqs: [
+      {
+        q: "Does it work for solo singers and DJs too?",
+        a: "Yes — solo artists, singers, DJs, and full bands all use the same setup: your formats, your rates, your calendar.",
+      },
+      {
+        q: "Can it handle advance payments?",
+        a: "Footfall states your advance policy up front and records it on the booking; collection stays with your payment method.",
+      },
+      {
+        q: "What if two enquiries want the same date?",
+        a: "The calendar blocks a date once a gig is confirmed, so a second enquiry is offered your next free date instead of a clash.",
+      },
+      {
+        q: "Can I take over a negotiation?",
+        a: "One tap pauses the AI and you reply directly — Footfall handles the routine questions, you close the deal.",
+      },
+    ],
+  },
+  {
+    slug: "makeup-artists",
+    name: "Makeup artists",
+    singular: "makeup studio",
+    title: "Makeup artist AI — WhatsApp booking for MUAs | Footfall",
+    description:
+      "Footfall is the makeup artist's AI assistant on WhatsApp: quotes bridal and party packages, checks date availability, books trials and books the big day — 24×7. 14 days free.",
+    keywords: [
+      "makeup artist ai",
+      "mua booking app india",
+      "bridal makeup booking whatsapp",
+      "makeup artist booking software",
+      "ai for makeup artists",
+    ],
+    h1: "Bridal season, without the WhatsApp chaos",
+    intro:
+      "Bridal enquiries arrive months ahead and party bookings arrive same-day — both on WhatsApp, both while your hands are literally on a client's face. Footfall answers instantly with your packages and free dates, books the trial, and locks the wedding date.",
+    pains: [
+      {
+        title: "Wedding dates are won early",
+        body: "Brides book months out and message many artists. An instant reply with your real availability keeps you on the shortlist.",
+      },
+      {
+        title: "Trial → big day",
+        body: "Footfall books the trial, then the wedding date itself, and reminds the client before both.",
+      },
+      {
+        title: "Travel and outstation",
+        body: "Your travel charges and outstation terms are quoted up front, so there's no awkward surprise later.",
+      },
+      {
+        title: "Party bookings fill the gaps",
+        body: "Same-day party makeup enquiries get booked into the gaps between bridal work automatically.",
+      },
+    ],
+    chat: [
+      { from: "customer", text: "Bridal makeup for 8 Dec — available? Trial bhi chahiye" },
+      { from: "footfall", text: "8 Dec is free 💄 Bridal package is ₹25,000 (HD makeup, draping, 1 touch-up kit). Trials are ₹3,500, adjustable against the final. Trial ke liye 20 Nov 11 am ya 23 Nov 4 pm?" },
+      { from: "customer", text: "20 Nov 11am" },
+      { from: "footfall", text: "Booked ✅ Trial 20 Nov 11:00 am, and 8 Dec is now held for your wedding. Reminders will come for both. 🌸" },
+    ],
+    faqs: [
+      {
+        q: "Can it hold a wedding date?",
+        a: "Yes — the date is blocked on your calendar the moment it's confirmed, so no clash.",
+      },
+      {
+        q: "Does it quote travel charges?",
+        a: "Your travel and outstation terms are part of the package details Footfall shares up front.",
+      },
+      {
+        q: "Multiple artists in my team?",
+        a: "Each artist has their own calendar, and you can charge more for senior artists if your pricing works that way.",
+      },
+      {
+        q: "How fast is setup?",
+        a: "About a day — packages, prices, trial rates and your calendar, done for you.",
+      },
+    ],
+  },
+  {
+    slug: "tutors",
+    name: "Tutors & coaching",
+    singular: "coaching practice",
+    title: "Tutor AI — WhatsApp booking for tutors & coaching classes | Footfall",
+    description:
+      "Footfall is the tutor's AI assistant on WhatsApp: answers batch, fee and demo-class questions instantly, books demos and sessions, and reminds students so attendance holds. 14 days free.",
+    keywords: [
+      "tutor ai",
+      "ai for tutors",
+      "coaching class booking whatsapp",
+      "tuition booking app india",
+      "demo class booking software",
+      "online tutor scheduling",
+    ],
+    h1: "Fill your batches while you're teaching",
+    intro:
+      "Parents message about fees, batch timings and demo classes in the middle of your lesson. Footfall answers instantly with your real schedule and fees, books the demo class that converts, and reminds students so your batches actually show up.",
+    pains: [
+      {
+        title: "The demo class is the sale",
+        body: "A fast reply and a booked demo is what turns an enquiry into an enrolled student. Footfall does both in one conversation.",
+      },
+      {
+        title: "Batch timings, endlessly asked",
+        body: "Class timings, subjects, fees and seats — answered instantly and consistently, in English or Hindi.",
+      },
+      {
+        title: "One-to-one scheduling",
+        body: "Personal tuition slots booked against your real free time, rescheduled in the same chat when exams shift things.",
+      },
+      {
+        title: "Attendance and reminders",
+        body: "Automatic reminders before each class keep attendance high — and parents informed.",
+      },
+    ],
+    chat: [
+      { from: "customer", text: "Class 10 maths ke liye batch timing aur fees?" },
+      { from: "footfall", text: "Class 10 Maths: Mon/Wed/Fri 5–6:30 pm, ₹3,500/month. Free demo class milti hai — kal 5 pm try karna chahenge?" },
+      { from: "customer", text: "Haan bilkul" },
+      { from: "footfall", text: "Booked ✅ Demo class kal 5:00 pm with Sharma sir. Notebook aur pen le aaiye. Reminder aayega. 📘" },
+    ],
+    faqs: [
+      {
+        q: "Batches or one-to-one?",
+        a: "Both — batches have capacity and fixed timings, personal tuition books against your free slots.",
+      },
+      {
+        q: "Can it handle multiple subjects and teachers?",
+        a: "Yes — each teacher has their own schedule, and each subject its own batches and fees.",
+      },
+      {
+        q: "Do parents get reminders?",
+        a: "Yes, before each class or session, on WhatsApp — which cuts missed classes sharply.",
+      },
+      {
+        q: "Does it work for online classes?",
+        a: "Yes — bookings work the same, and you can include your meeting link in the confirmation.",
+      },
+    ],
+  },
 ];
 
 export const getVertical = (slug: string) => VERTICALS.find((v) => v.slug === slug);
