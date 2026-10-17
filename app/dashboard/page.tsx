@@ -1,818 +1,336 @@
 "use client";
 
+/* Home: what's happening today, what the AI has done, what needs the owner,
+   and what's left to set up. */
+
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, rupees } from "@/lib/api";
+import { useAlerts } from "@/lib/alerts";
 import { useBusiness } from "@/lib/business-context";
-import { Onboarding } from "./onboarding";
+import { type Booking, isBlock, todayStr, useBookings, useFmt } from "./booking-drawers";
+import { Avatar, Icon, StatusPill, phone, rupeesShort, timeAgo } from "./ui";
 
-type Booking = {
-  id: string;
-  start_ts: string;
-  end_ts: string;
-  status: string;
-  customer_name: string | null;
-  customer_phone: string;
-  service_name: string;
-  staff_id: string | null;
-  staff_name: string | null;
-  price_minor: number;
+type Insights = {
+  totals: { bookings: number; revenue_minor: number; no_shows: number; no_show_rate: number };
+  daily: { date: string; bookings: number; revenue: number }[];
 };
-type Staff = { id: string; name: string; is_active: boolean };
-type HoursRow = { weekday: number; opens_at: string; closes_at: string };
-type Service = {
-  id: string;
-  name: string;
-  price_minor: number;
-  duration_minutes: number;
-  is_active: boolean;
-  item_type: string;
-};
+type Conversation = { id: string; status: string; last_message_at: string | null; customer_name: string | null };
 
-const toMin = (hm: string) => parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(3, 5), 10);
-const toHM = (min: number) =>
-  `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
 
-const todayStr = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
-
-function BookingCard({ b, fmt }: { b: Booking; fmt: (ts: string) => string }) {
+function Kpi({ label, value, icon, tone, foot }: { label: string; value: string; icon: string; tone?: string; foot: React.ReactNode }) {
   return (
-    <div
-      style={{
-        border: "1px solid var(--line)",
-        borderLeft: `4px solid ${b.status === "confirmed" ? "var(--emerald)" : b.status === "no_show" ? "#b3442e" : "#9a9a90"}`,
-        borderRadius: 10,
-        padding: "8px 12px",
-        marginBottom: 8,
-        background: "#fff",
-      }}
-    >
-      <div style={{ fontWeight: 700, fontSize: 13.5 }}>
-        {fmt(b.start_ts)}–{fmt(b.end_ts)}
+    <div className="kpi">
+      <div className="k-top">
+        <span className="k-label">{label}</span>
+        <span className={`k-icon ${tone ?? ""}`}>
+          <Icon name={icon} size={16} />
+        </span>
       </div>
-      <div style={{ fontSize: 13 }}>{b.service_name}</div>
-      <div style={{ fontSize: 12, color: "var(--muted)" }}>
-        {b.customer_name ?? b.customer_phone} · {rupees(b.price_minor)}
-      </div>
-      <span className={`pill ${b.status}`} style={{ marginTop: 4 }}>
-        {b.status.replace("_", "-")}
-      </span>
+      <div className="k-value">{value}</div>
+      <div className="k-foot">{foot}</div>
     </div>
   );
 }
 
-const AVA_COLORS = ["#149c60", "#3c68c0", "#b0642f", "#7d5bb5", "#c04f6e", "#2f8f9c"];
-const avaColor = (name: string) =>
-  AVA_COLORS[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVA_COLORS.length];
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter((w) => w && !w.startsWith("("))
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-
-function Timeline({
-  staff,
-  allStaffCount,
-  staffFilter,
-  setStaffFilter,
-  bookings,
-  axis,
-  fmt,
-  isToday,
-  tzNowMin,
-  onPick,
-  onOpen,
-}: {
-  staff: Staff[];
-  allStaffCount: number;
-  staffFilter: string;
-  setStaffFilter: (v: string) => void;
-  bookings: Booking[];
-  axis: { open: number; close: number };
-  fmt: (ts: string) => string;
-  isToday: boolean;
-  tzNowMin: number;
-  onPick: (staffId: string | null, minute: number) => void;
-  onOpen: (b: Booking) => void;
-}) {
-  const span = Math.max(axis.close - axis.open, 60);
-  const pct = (min: number) => Math.min(100, Math.max(0, ((min - axis.open) / span) * 100));
-  const bookMin = (ts: string) => {
-    const [h, m] = new Date(ts)
-      .toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })
-      .split(":");
-    return parseInt(h, 10) * 60 + parseInt(m, 10);
-  };
-  const hourTicks: number[] = [];
-  for (let h = Math.ceil(axis.open / 60); h <= Math.floor(axis.close / 60); h++) hourTicks.push(h * 60);
-  const hourLabel = (min: number) => {
-    const h = Math.floor(min / 60);
-    return `${h % 12 === 0 ? 12 : h % 12} ${h >= 12 ? "PM" : "AM"}`;
-  };
-
-  // Bars span the booking's true duration. Wide bars carry the full label,
-  // mid-width bars a compact one (so back-to-back bookings stay on one lane);
-  // only truly tiny bars hang their label outside, and only that outside
-  // label counts toward lane collision.
-  const MIN_W = 14;
-  const COMPACT_W = 4;
-  const LABEL_W = 13;
-  const LANE_H = 46;
-  const unassigned = bookings.filter((b) => !b.staff_name);
-  const rows: { name: string; staffId: string | null; items: Booking[] }[] = [
-    ...(unassigned.length ? [{ name: "Unassigned", staffId: null, items: unassigned }] : []),
-    ...staff.map((s) => ({
-      name: s.name,
-      staffId: s.id,
-      items: bookings.filter((b) => b.staff_name === s.name),
-    })),
-  ];
-
-  const pickAt = (e: React.MouseEvent<HTMLDivElement>, staffId: string | null) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const frac = (e.clientX - rect.left) / rect.width;
-    const raw = axis.open + frac * span;
-    const snapped = Math.round(raw / 15) * 15;
-    onPick(staffId, Math.max(axis.open, Math.min(snapped, axis.close - 15)));
-  };
-
+function SetupCard({ steps }: { steps: { label: string; done: boolean; href: string }[] }) {
+  const done = steps.filter((s) => s.done).length;
+  if (done === steps.length) return null;
   return (
-    <div className="db-card" style={{ padding: "6px 16px 12px" }}>
-      {allStaffCount > 8 && (
-        <div className="row" style={{ margin: "10px 0" }}>
-          <input
-            placeholder="Filter team…"
-            value={staffFilter}
-            onChange={(e) => setStaffFilter(e.target.value)}
-            style={{ maxWidth: 220 }}
-          />
-          <span style={{ fontSize: 12, color: "var(--faint)" }}>
-            {staff.length} of {allStaffCount} shown
-          </span>
-        </div>
-      )}
-      <div className="tl-scroll">
-        <div className="tl">
-          <div className="tl-row head">
-            <div className="tl-name" />
-            <div className="tl-track" style={{ minHeight: 30 }}>
-              {hourTicks.map((m) => (
-                <span key={m} className="tl-tick" style={{ left: `${pct(m)}%` }}>
-                  {hourLabel(m)}
-                </span>
-              ))}
-            </div>
-          </div>
-          {rows.map((row) => {
-            const sorted = [...row.items].sort((a, b) => a.start_ts.localeCompare(b.start_ts));
-            const laneEnds: number[] = [];
-            const placed = sorted.map((b, i) => {
-              const s = pct(bookMin(b.start_ts));
-              const w = Math.max(pct(bookMin(b.end_ts)) - s, 1);
-              const nextS = i + 1 < sorted.length ? pct(bookMin(sorted[i + 1].start_ts)) : 200;
-              // Prefer the full outside label whenever the gap to the next
-              // booking can hold it; squeeze text inside only in dense runs.
-              const mode =
-                w >= MIN_W
-                  ? "full"
-                  : nextS - (s + w) >= LABEL_W || s + w + LABEL_W > 100
-                    ? "tag"
-                    : w >= COMPACT_W
-                      ? "compact"
-                      : "tag";
-              // Tiny bars carry their label outside — to the right, or to the
-              // left when the bar sits against the end of the day.
-              const labelLeft = mode === "tag" && s + w + LABEL_W > 100;
-              const foot = mode === "tag" ? w + LABEL_W : w;
-              const footStart = labelLeft ? s - LABEL_W : s;
-              let lane = laneEnds.findIndex((endAt) => endAt <= footStart + 0.4);
-              if (lane === -1) {
-                lane = laneEnds.length;
-                laneEnds.push(0);
-              }
-              laneEnds[lane] = footStart + foot;
-              return { b, s, w, lane, mode, labelLeft };
-            });
-            const lanes = Math.max(laneEnds.length, 1);
-            const isUnassigned = row.name === "Unassigned";
-            return (
-              <div className="tl-row" key={row.name}>
-                <div className="tl-name">
-                  {isUnassigned ? (
-                    <span className="tl-ava" style={{ background: "var(--faint)" }}>?</span>
-                  ) : (
-                    <span className="tl-ava" style={{ background: avaColor(row.name) }}>
-                      {initials(row.name)}
-                    </span>
-                  )}
-                  <span className="tl-who">
-                    <b title={row.name}>{row.name}</b>
-                    <small>
-                      {row.items.length === 0
-                        ? "free all day"
-                        : `${row.items.length} booking${row.items.length !== 1 ? "s" : ""}`}
-                    </small>
-                  </span>
-                </div>
-                <div
-                  className="tl-track clickable"
-                  style={{ minHeight: 14 + lanes * LANE_H }}
-                  title="Click a free spot to add a booking"
-                  onClick={(e) => pickAt(e, row.staffId)}
-                >
-                  {hourTicks.map((m) => (
-                    <i key={m} className="tl-grid" style={{ left: `${pct(m)}%` }} />
-                  ))}
-                  {isToday && tzNowMin > axis.open && tzNowMin < axis.close && (
-                    <i className="tl-now" style={{ left: `${pct(tzNowMin)}%` }} />
-                  )}
-                  {placed.map(({ b, s, w, lane, mode, labelLeft }) => {
-                    const isBlock = b.service_name === "Blocked time";
-                    const who = b.customer_name ? b.customer_name.split(" ")[0] : null;
-                    const cls = isBlock ? "blocked" : b.status;
-                    const tip = `${fmt(b.start_ts)}–${fmt(b.end_ts)} · ${b.service_name} · ${b.customer_name ?? b.customer_phone}`;
-                    const shortTime = fmt(b.start_ts).replace(/ [ap]m$/, "");
-                    const label =
-                      mode === "compact" ? (
-                        <>
-                          <b>{isBlock ? "Blocked" : b.service_name}</b>
-                          <span>{shortTime}</span>
-                        </>
-                      ) : (
-                        <>
-                          <b>{isBlock ? "Blocked" : b.service_name}</b>
-                          <span>
-                            {fmt(b.start_ts)}
-                            {who && !isBlock ? ` · ${who}` : ""}
-                          </span>
-                        </>
-                      );
-                    return (
-                      <div key={b.id}>
-                        <div
-                          className={`tl-block ${cls}${mode === "tag" ? " slim" : ""}${mode === "compact" ? " compact" : ""}`}
-                          style={{
-                            left: `${s}%`,
-                            width: `${w}%`,
-                            top: 7 + lane * LANE_H,
-                            height: LANE_H - 6,
-                          }}
-                          title={tip}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpen(b);
-                          }}
-                        >
-                          {mode !== "tag" && label}
-                        </div>
-                        {mode === "tag" && (
-                          <div
-                            className={`tl-tag ${cls}${labelLeft ? " left" : ""}`}
-                            style={{
-                              left: labelLeft ? undefined : `${s + w}%`,
-                              right: labelLeft ? `${100 - s}%` : undefined,
-                              top: 7 + lane * LANE_H,
-                              height: LANE_H - 6,
-                            }}
-                          >
-                            {label}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BookingModal({
-  businessId,
-  date,
-  staff,
-  services,
-  draft,
-  onClose,
-  onCreated,
-}: {
-  businessId: string;
-  date: string;
-  staff: Staff[];
-  services: Service[];
-  draft: { staffId: string; time: string };
-  onClose: () => void;
-  onCreated: () => void;
-}) {
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
-  const [staffId, setStaffId] = useState(draft.staffId);
-  const [time, setTime] = useState(draft.time);
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setErr(null);
-    try {
-      await api(`businesses/${businessId}/bookings`, {
-        method: "POST",
-        body: JSON.stringify({
-          service_id: serviceId,
-          staff_id: staffId || null,
-          date,
-          time,
-          customer_phone: phone.trim(),
-          customer_name: name.trim() || null,
-        }),
-      });
-      onCreated();
-    } catch (ex) {
-      setErr((ex as Error).message);
-      setBusy(false);
-    }
-  }
-
-  const dateLabel = new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-
-  return (
-    <div className="db-overlay" onClick={onClose}>
-      <div className="db-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>New booking · {dateLabel}</h3>
-        <form onSubmit={submit}>
-          <label>
-            Service
-            <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} required>
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} — {s.duration_minutes} min · {rupees(s.price_minor)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="row" style={{ alignItems: "stretch" }}>
-            <label style={{ flex: 1 }}>
-              Time
-              <input
-                type="time"
-                value={time}
-                step={900}
-                onChange={(e) => setTime(e.target.value)}
-                required
-              />
-            </label>
-            <label style={{ flex: 1 }}>
-              With
-              <select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-                <option value="">Anyone free</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label>
-            Customer WhatsApp number
-            <input
-              placeholder="91XXXXXXXXXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              minLength={10}
-            />
-          </label>
-          <label>
-            Customer name (optional)
-            <input value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
-          {err && <p style={{ color: "#b3442e", fontSize: 13, margin: 0 }}>{err}</p>}
-          <div className="row" style={{ justifyContent: "flex-end", marginTop: 4 }}>
-            <button type="button" className="btn ghost" onClick={onClose}>
-              Cancel
-            </button>
-            <button className="btn" disabled={busy || !serviceId}>
-              {busy ? "…" : "Add booking"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function EditBookingModal({
-  booking,
-  date,
-  staff,
-  fmt,
-  onClose,
-  onDone,
-}: {
-  booking: Booking;
-  date: string;
-  staff: Staff[];
-  fmt: (ts: string) => string;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const isBlock = booking.service_name === "Blocked time";
-  const startHM = new Date(booking.start_ts).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Kolkata",
-  });
-  const [time, setTime] = useState(startHM);
-  const [staffId, setStaffId] = useState(booking.staff_id ?? "");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [confirmCancel, setConfirmCancel] = useState(false);
-
-  async function patch(body: Record<string, unknown>) {
-    setBusy(true);
-    setErr(null);
-    try {
-      await api(`bookings/${booking.id}`, { method: "PATCH", body: JSON.stringify(body) });
-      onDone();
-    } catch (ex) {
-      setErr((ex as Error).message);
-      setBusy(false);
-    }
-  }
-
-  function save() {
-    const body: Record<string, unknown> = {};
-    if (time !== startHM) {
-      body.date = date;
-      body.time = time;
-    }
-    if (staffId && staffId !== (booking.staff_id ?? "")) body.staff_id = staffId;
-    if (Object.keys(body).length === 0) {
-      onClose();
-      return;
-    }
-    patch(body);
-  }
-
-  return (
-    <div className="db-overlay" onClick={onClose}>
-      <div className="db-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>
-          {isBlock ? "Blocked time" : booking.service_name}
-          <span className={`pill ${booking.status}`} style={{ marginLeft: 10 }}>
-            {booking.status.replace("_", "-")}
-          </span>
-        </h3>
-        {!isBlock && (
-          <p className="sub" style={{ marginTop: -8, marginBottom: 14 }}>
-            {booking.customer_name ?? booking.customer_phone} · {rupees(booking.price_minor)} ·{" "}
-            {fmt(booking.start_ts)}–{fmt(booking.end_ts)}
+    <div className="card">
+      <div className="setup">
+        <div className="setup-progress">
+          <b>Finish setting up</b>
+          <p>
+            {done} of {steps.length} done — the AI books better with each one.
           </p>
-        )}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            save();
-          }}
-        >
-          <div className="row" style={{ alignItems: "stretch" }}>
-            <label style={{ flex: 1 }}>
-              Time
-              <input
-                type="time"
-                value={time}
-                step={300}
-                onChange={(e) => setTime(e.target.value)}
-                required
-              />
-            </label>
-            <label style={{ flex: 1 }}>
-              With
-              <select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-                {!booking.staff_id && <option value="">Unassigned</option>}
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="bar">
+            <i style={{ width: `${(done / steps.length) * 100}%` }} />
           </div>
-          {err && <p style={{ color: "#b3442e", fontSize: 13, margin: 0 }}>{err}</p>}
-          <div className="row" style={{ justifyContent: "space-between", marginTop: 4 }}>
-            <div className="row">
-              {!isBlock && booking.status === "confirmed" && (
-                <>
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    disabled={busy}
-                    onClick={() => patch({ status: "completed" })}
-                  >
-                    Completed
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    disabled={busy}
-                    onClick={() => patch({ status: "no_show" })}
-                  >
-                    No-show
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                className="btn danger"
-                disabled={busy}
-                onClick={() => {
-                  if (confirmCancel) patch({ status: "cancelled" });
-                  else setConfirmCancel(true);
-                }}
-              >
-                {isBlock
-                  ? confirmCancel
-                    ? "Really remove?"
-                    : "Remove block"
-                  : confirmCancel
-                    ? "Really cancel?"
-                    : "Cancel booking"}
-              </button>
-            </div>
-            <button className="btn" disabled={busy}>
-              {busy ? "…" : "Save"}
-            </button>
-          </div>
-        </form>
+        </div>
+        <div className="steps">
+          {steps.map((s) => (
+            <Link key={s.label} href={s.href} className={`step ${s.done ? "done" : ""}`}>
+              <span className="tick">
+                <Icon name="check" size={12} />
+              </span>
+              {s.label}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-export default function TodayPage() {
-  const { business, loaded, error, refresh } = useBusiness();
-  const [date, setDate] = useState(todayStr());
-  const [bookings, setBookings] = useState<Booking[] | null>(null);
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [view, setView] = useState<"columns" | "list">("columns");
-  const [axis, setAxis] = useState<{ open: number; close: number }>({ open: 540, close: 1260 });
-  const [staffFilter, setStaffFilter] = useState("");
-  const [services, setServices] = useState<Service[]>([]);
-  const [draft, setDraft] = useState<{ staffId: string; time: string } | null>(null);
-  const [editing, setEditing] = useState<Booking | null>(null);
+export default function HomePage() {
+  const { business, error } = useBusiness();
+  const { alerts, push } = useAlerts();
+  const { openBooking, version } = useBookings();
+  const fmt = useFmt();
+  const [today, setToday] = useState<Booking[] | null>(null);
+  const [week, setWeek] = useState<Insights | null>(null);
+  const [convs, setConvs] = useState<Conversation[]>([]);
+  const [setup, setSetup] = useState({ wa: true, services: true, staff: true });
+  const [nowMin, setNowMin] = useState(0);
 
   const load = useCallback(() => {
     if (!business) return;
-    api<Booking[]>(`businesses/${business.id}/bookings?on=${date}`).then(setBookings);
-    api<Staff[]>(`businesses/${business.id}/staff`).then((rows) =>
-      setStaff(rows.filter((s) => s.is_active))
-    );
-    api<Service[]>(`businesses/${business.id}/services`).then((rows) =>
-      setServices(
-        rows.filter((s) => s.is_active && s.item_type !== "product" && s.name !== "Blocked time")
-      )
-    );
-    api<HoursRow[]>(`businesses/${business.id}/hours`).then((rows) => {
-      if (rows.length) {
-        setAxis({
-          open: Math.min(...rows.map((r) => toMin(r.opens_at))),
-          close: Math.max(...rows.map((r) => toMin(r.closes_at))),
-        });
-      }
-    });
-  }, [business, date]);
-  useEffect(load, [load]);
+    const id = business.id;
+    api<Booking[]>(`businesses/${id}/bookings?on=${todayStr()}`).then(setToday).catch(() => setToday([]));
+    if (business.role !== "staff") api<Insights>(`businesses/${id}/insights?days=7`).then(setWeek).catch(() => {});
+    api<Conversation[]>(`businesses/${id}/conversations`).then(setConvs).catch(() => {});
+    Promise.all([
+      business.role === "owner"
+        ? api<{ connected: boolean }>(`businesses/${id}/wa-account`).then((a) => a.connected).catch(() => true)
+        : Promise.resolve(true),
+      api<{ name: string }[]>(`businesses/${id}/services`).then((r) => r.some((s) => s.name !== "Blocked time")).catch(() => true),
+      api<unknown[]>(`businesses/${id}/staff`).then((r) => r.length > 0).catch(() => true),
+    ]).then(([wa, services, staff]) => setSetup({ wa, services, staff }));
+  }, [business]);
+  useEffect(load, [load, version]);
 
-  const fmt = (ts: string) =>
-    new Date(ts).toLocaleTimeString("en-IN", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: business?.timezone ?? "Asia/Kolkata",
-    });
-
-  const all = bookings ?? [];
-  const active = all.filter((b) => b.status === "confirmed" || b.status === "completed");
-  const revenue = active.reduce((sum, b) => sum + b.price_minor, 0);
-  const onCalendar = all.filter((b) => b.status !== "cancelled");
-  const unassigned = onCalendar.filter((b) => !b.staff_name);
-  const columns: { title: string; items: Booking[] }[] = staff.length
-    ? staff.map((s) => ({
-        title: s.name,
-        items: onCalendar.filter((b) => b.staff_name === s.name),
-      }))
-    : [{ title: "Bookings", items: onCalendar }];
-
-  async function assign(bookingId: string, staffId: string) {
-    if (!staffId) return;
-    await api(`bookings/${bookingId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ staff_id: staffId }),
-    });
-    load();
-  }
+  useEffect(() => {
+    const tick = () =>
+      setNowMin(() => {
+        const [h, m] = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: fmt.tz }).split(":");
+        return parseInt(h, 10) * 60 + parseInt(m, 10);
+      });
+    tick();
+    const t = setInterval(tick, 60000);
+    return () => clearInterval(t);
+  }, [fmt.tz]);
 
   if (error) return <p className="sub">Could not reach the Footfall API: {error}</p>;
-  if (loaded && !business) {
-    return <Onboarding onDone={refresh} />;
-  }
+  if (!business) return null;
+
+  const minOf = (ts: string) => {
+    const [h, m] = fmt.hm(ts).split(":");
+    return parseInt(h, 10) * 60 + parseInt(m, 10);
+  };
+  const day = (today ?? []).filter((b) => b.status !== "cancelled").sort((a, b) => a.start_ts.localeCompare(b.start_ts));
+  const real = day.filter((b) => !isBlock(b));
+  const kept = real.filter((b) => b.status === "confirmed" || b.status === "completed");
+  const value = kept.reduce((s, b) => s + b.price_minor, 0);
+  const done = real.filter((b) => b.status === "completed").length;
+  const upcoming = real.filter((b) => b.status === "confirmed" && minOf(b.start_ts) >= nowMin);
+  const byAI = real.filter((b) => b.source !== "owner").length;
+  const needsYou = convs.filter((c) => c.status === "human").length;
+  const todayChats = convs.filter((c) => c.last_message_at && new Date(c.last_message_at).toDateString() === new Date().toDateString()).length;
+  const nowIdx = day.findIndex((b) => minOf(b.end_ts) > nowMin);
+  const next = upcoming[0];
+
+  const steps = [
+    ...(business.role === "owner" ? [{ label: "Connect WhatsApp", done: setup.wa, href: "/dashboard/settings" }] : []),
+    { label: "Add your services", done: setup.services, href: "/dashboard/services" },
+    { label: "Add your team", done: setup.staff, href: "/dashboard/team" },
+    ...(business.role === "owner" ? [{ label: "Link Google listing", done: Boolean(business.place_address), href: "/dashboard/settings#listing" }] : []),
+    { label: "Turn on booking alerts", done: push === "on" || push === "unsupported", href: "/dashboard/settings#alerts" },
+  ];
 
   return (
     <>
-      <h1>{business ? business.name : "…"}</h1>
-      <p className="sub">The business calendar — the whole team at a glance.</p>
-
-      <div className="db-card">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>
-            <span className="stat">
-              <b>{active.length}</b>
-              <span>bookings</span>
-            </span>
-            <span className="stat">
-              <b>{rupees(revenue)}</b>
-              <span>booked value</span>
-            </span>
-            <span className="stat">
-              <b>{all.filter((b) => b.status === "no_show").length}</b>
-              <span>no-shows</span>
-            </span>
-          </div>
-          <div className="row">
-            <button
-              className="btn"
-              onClick={() => {
-                const nowMin = toMin(
-                  new Date().toLocaleTimeString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: business?.timezone ?? "Asia/Kolkata",
-                  })
-                );
-                const next = Math.min(
-                  Math.max(Math.ceil(nowMin / 15) * 15, axis.open),
-                  axis.close - 15
-                );
-                setDraft({ staffId: "", time: toHM(next) });
-              }}
-            >
-              + New booking
-            </button>
-            <button
-              className="btn ghost"
-              onClick={() => setView(view === "columns" ? "list" : "columns")}
-            >
-              {view === "columns" ? "List view" : "Calendar view"}
-            </button>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
+      <div className="hello">
+        <div>
+          <h2>
+            {greeting()}, {business.name}
+          </h2>
+          <p>
+            {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+            {next ? ` · next up ${next.service_name} at ${fmt.time(next.start_ts)}` : real.length ? " · that's everything for today" : ""}
+          </p>
         </div>
+        <Link href="/dashboard/calendar" className="btn ghost">
+          <Icon name="calendar" size={16} /> Open calendar
+        </Link>
       </div>
 
-      {staff.length > 0 && unassigned.length > 0 && (
-        <div
-          className="db-card"
-          style={{ borderColor: "#f0d9a0", background: "#fdf9ef" }}
-        >
-          <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 8, color: "#8a6414" }}>
-            Needs assignment
-          </div>
-          {unassigned.map((b) => (
-            <div key={b.id} className="row" style={{ marginBottom: 8, fontSize: 13.5 }}>
-              <span>
-                {fmt(b.start_ts)} · {b.service_name} · {b.customer_name ?? b.customer_phone}
+      <SetupCard steps={steps} />
+
+      <div className="kpis">
+        <Kpi
+          label="Bookings today"
+          value={String(kept.length)}
+          icon="calendar"
+          foot={
+            <>
+              <b>{byAI}</b> booked by AI · {upcoming.length} still to come
+            </>
+          }
+        />
+        <Kpi label="Booked value today" value={rupees(value)} icon="rupee" tone="gold" foot={`${done} done · ${upcoming.length} to go`} />
+        <Kpi
+          label="Last 7 days"
+          value={week ? rupeesShort(week.totals.revenue_minor) : "—"}
+          icon="chart"
+          tone="blue"
+          foot={week ? `${week.totals.bookings} bookings` : business.role === "staff" ? "Managers see revenue" : "…"}
+        />
+        <Kpi
+          label="No-shows, 7 days"
+          value={week ? String(week.totals.no_shows) : "—"}
+          icon="alert"
+          tone="red"
+          foot={week ? `${week.totals.no_show_rate}% of visits · reminders on` : "…"}
+        />
+      </div>
+
+      <div className="home-grid">
+        <div>
+          <div className="card">
+            <div className="card-h">
+              <h2>Today&apos;s schedule</h2>
+              <span className="muted" style={{ fontSize: 13 }}>
+                {real.length} booking{real.length === 1 ? "" : "s"}
               </span>
-              <select
-                defaultValue=""
-                onChange={(e) => assign(b.id, e.target.value)}
-                style={{ padding: "5px 10px" }}
-              >
-                <option value="" disabled>
-                  Assign to…
-                </option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <span className="spacer" />
+              <Link className="more" href="/dashboard/calendar">
+                Calendar →
+              </Link>
             </div>
-          ))}
-        </div>
-      )}
-
-      {bookings === null ? (
-        <div className="db-card">
-          <div className="empty">Loading…</div>
-        </div>
-      ) : all.length === 0 && staff.length === 0 ? (
-        <div className="db-card">
-          <div className="empty">
-            No bookings on this day yet. Add your team under Team to see the calendar.
+            {today === null ? (
+              <div className="empty">Loading…</div>
+            ) : day.length === 0 ? (
+              <div className="empty">
+                <b>Nothing booked today yet</b>
+                When customers book on WhatsApp, they show up here instantly.
+              </div>
+            ) : (
+              <div className="agenda">
+                {day.map((b, i) => {
+                  const block = isBlock(b);
+                  const past = minOf(b.end_ts) <= nowMin;
+                  return (
+                    <div key={b.id}>
+                      {i === nowIdx && (
+                        <div className="ag-now">
+                          <i /> Now · {fmt.time(new Date().toISOString())}
+                        </div>
+                      )}
+                      <div className={`ag-item ${past ? "past" : ""}`} onClick={() => openBooking(b, todayStr())}>
+                        <div className="ag-time">
+                          <b>{fmt.time(b.start_ts)}</b>
+                          <small>{Math.round((minOf(b.end_ts) - minOf(b.start_ts)))} min</small>
+                        </div>
+                        <span className={`ag-bar ${block ? "blocked" : b.status}`} />
+                        <div className="ag-main">
+                          <b>{block ? "Blocked time" : b.service_name}</b>
+                          <small>
+                            {!block && <>{b.customer_name ?? phone(b.customer_phone)} · </>}
+                            {b.staff_name ?? "Unassigned"}
+                            {!block && b.source !== "owner" && (
+                              <span className="pill ai plain" style={{ height: 18, fontSize: 10.5, padding: "0 7px" }}>
+                                AI
+                              </span>
+                            )}
+                          </small>
+                        </div>
+                        {block ? <span /> : b.status === "confirmed" ? (
+                          <span className="num" style={{ fontWeight: 600 }}>
+                            {rupees(b.price_minor)}
+                          </span>
+                        ) : (
+                          <StatusPill status={b.status} />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {nowIdx === -1 && real.length > 0 && (
+                  <div className="ag-now">
+                    <i /> Now — the day&apos;s bookings are done
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      ) : view === "columns" ? (
-        <Timeline
-          staff={staff.filter(
-            (s) => !staffFilter || s.name.toLowerCase().includes(staffFilter.toLowerCase())
-          )}
-          allStaffCount={staff.length}
-          staffFilter={staffFilter}
-          setStaffFilter={setStaffFilter}
-          bookings={onCalendar}
-          axis={axis}
-          fmt={fmt}
-          isToday={date === todayStr()}
-          tzNowMin={(() => {
-            const now = new Date().toLocaleTimeString("en-GB", {
-              hour: "2-digit",
-              minute: "2-digit",
-              timeZone: business?.timezone ?? "Asia/Kolkata",
-            });
-            return toMin(now);
-          })()}
-          onPick={(staffId, minute) => setDraft({ staffId: staffId ?? "", time: toHM(minute) })}
-          onOpen={setEditing}
-        />
-      ) : (
-        <div className="db-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Customer</th>
-                <th>Service</th>
-                <th>Staff</th>
-                <th>Value</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {all.map((b) => (
-                <tr
-                  key={b.id}
-                  onClick={() => b.status !== "cancelled" && setEditing(b)}
-                  style={{ cursor: b.status !== "cancelled" ? "pointer" : undefined }}
-                >
-                  <td>
-                    {fmt(b.start_ts)}–{fmt(b.end_ts)}
-                  </td>
-                  <td>
-                    {b.customer_name ?? "—"}
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{b.customer_phone}</div>
-                  </td>
-                  <td>{b.service_name}</td>
-                  <td>{b.staff_name ?? "Anyone"}</td>
-                  <td>{rupees(b.price_minor)}</td>
-                  <td>
-                    <span className={`pill ${b.status}`}>{b.status.replace("_", "-")}</span>
-                  </td>
-                </tr>
+
+        <div>
+          <div className="card dark ai-card">
+            <div className="ai-top">
+              <Icon name="sparkle" size={18} />
+              <h2>AI receptionist</h2>
+              <span className={`ai-status ${business.is_live ? "" : "off"}`}>
+                <i className={`live-dot ${business.is_live ? "" : "off"}`} />
+                {business.is_live ? "Live" : "Paused"}
+              </span>
+            </div>
+            <div className="ai-stats">
+              <div className="ai-stat">
+                <b>{todayChats}</b>
+                <small>chats today</small>
+              </div>
+              <div className="ai-stat">
+                <b>{byAI}</b>
+                <small>booked by AI today</small>
+              </div>
+            </div>
+            {needsYou > 0 ? (
+              <Link href="/dashboard/inbox" className="ai-cta">
+                <Icon name="chat" size={16} />
+                {needsYou} chat{needsYou === 1 ? "" : "s"} need{needsYou === 1 ? "s" : ""} you
+                <span style={{ marginLeft: "auto" }}>Open →</span>
+              </Link>
+            ) : (
+              <Link href="/dashboard/inbox" className="ai-cta calm">
+                <Icon name="check" size={16} />
+                Every chat answered
+                <span style={{ marginLeft: "auto" }}>Inbox →</span>
+              </Link>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="card-h">
+              <h2>Activity</h2>
+            </div>
+            {alerts.length === 0 ? (
+              <div className="empty" style={{ padding: "18px 0" }}>
+                New bookings, moves and cancellations will appear here.
+              </div>
+            ) : (
+              <div className="feed">
+                {alerts.slice(0, 6).map((a) => (
+                  <div key={a.id} className="feed-item">
+                    <i className={a.kind} />
+                    <div>
+                      <b>{a.title}</b>
+                      <p>{a.detail}</p>
+                      <small>{timeAgo(a.created_at)}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {convs.length > 0 && (
+            <div className="card">
+              <div className="card-h">
+                <h2>Latest chats</h2>
+                <span className="spacer" />
+                <Link className="more" href="/dashboard/inbox">
+                  Inbox →
+                </Link>
+              </div>
+              {convs.slice(0, 4).map((c) => (
+                <Link key={c.id} href="/dashboard/inbox" className="row" style={{ padding: "7px 0", flexWrap: "nowrap" }}>
+                  <Avatar name={c.customer_name ?? "?"} size={30} />
+                  <span className="grow" style={{ minWidth: 0, fontSize: 13.5, fontWeight: 500 }}>
+                    {c.customer_name ?? "Customer"}
+                  </span>
+                  {c.status === "human" ? <span className="pill human">Needs you</span> : <span className="faint" style={{ fontSize: 12 }}>{c.last_message_at ? timeAgo(c.last_message_at) : ""}</span>}
+                </Link>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-      )}
-
-      {editing && business && (
-        <EditBookingModal
-          booking={editing}
-          date={date}
-          staff={staff}
-          fmt={fmt}
-          onClose={() => setEditing(null)}
-          onDone={() => {
-            setEditing(null);
-            load();
-          }}
-        />
-      )}
-
-      {draft && business && (
-        <BookingModal
-          businessId={business.id}
-          date={date}
-          staff={staff}
-          services={services}
-          draft={draft}
-          onClose={() => setDraft(null)}
-          onCreated={() => {
-            setDraft(null);
-            load();
-          }}
-        />
-      )}
+      </div>
     </>
   );
 }

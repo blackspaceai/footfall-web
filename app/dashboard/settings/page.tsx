@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useBusiness } from "@/lib/business-context";
 import { TeamAccessCard } from "./team-access";
+import { AlertsCard, ListingCard, SettingsNav } from "./extra-cards";
 
 type WaAccount = {
   connected: boolean;
@@ -44,8 +45,10 @@ function GrowCard({ acct }: { acct: WaAccount | null }) {
   }
 
   return (
-    <div className="db-card" style={{ maxWidth: 640 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Grow</div>
+    <div className="card">
+      <div className="card-h">
+        <h2>Grow</h2>
+      </div>
       {!waLink ? (
         <p className="sub" style={{ margin: 0 }}>Connect a WhatsApp number to unlock the booking QR.</p>
       ) : (
@@ -161,8 +164,11 @@ function WhatsAppCard({ businessId }: { businessId: string }) {
   }
 
   return (
-    <div className="db-card" style={{ maxWidth: 640 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>WhatsApp connection</div>
+    <div className="card">
+      <div className="card-h">
+        <h2>WhatsApp number</h2>
+      </div>
+      <p className="section-sub">The number customers message. Your AI receptionist answers it.</p>
       {acct === null ? (
         <div className="empty">Loading…</div>
       ) : (
@@ -336,118 +342,86 @@ export default function SettingsPage() {
   if (!full) return <p className="sub">Loading…</p>;
 
   return (
-    <>
-      <h1>Settings</h1>
-      <p className="sub">How your receptionist behaves. Changes apply to the next message.</p>
-
-      <WhatsAppCard businessId={full.id} />
-
-      <TeamAccessCard businessId={full.id} />
-
-      <GrowCard acct={acct} />
-
-      <div className="db-card" style={{ maxWidth: 640 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <label style={{ fontSize: 13, fontWeight: 700 }}>
-            Business name
-            <input
-              style={{ display: "block", width: "100%", marginTop: 6 }}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-
-          <label style={{ fontSize: 13, fontWeight: 700 }}>
-            Owner WhatsApp (alerts &amp; digests)
-            <input
-              style={{ display: "block", width: "100%", marginTop: 6 }}
-              placeholder="91XXXXXXXXXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </label>
-
-          <div style={{ fontSize: 13, fontWeight: 700 }}>
-            Reply language
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-              {LANGUAGE_MODES.map((m) => (
-                <label
-                  key={m.value}
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    alignItems: "baseline",
-                    fontWeight: 400,
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="lang"
-                    checked={langMode === m.value}
-                    onChange={() => {
+    <div className="set-grid">
+      <SettingsNav />
+      <div style={{ maxWidth: 780, minWidth: 0 }}>
+        <section id="receptionist" className="card">
+          <div className="card-h">
+            <h2>Receptionist</h2>
+            <span className="spacer" />
+            <label className="switch">
+              <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
+              <span />
+              <em>{live ? "Answering" : "Paused"}</em>
+            </label>
+          </div>
+          <p className="section-sub">
+            How your AI receptionist behaves. Paused = messages are still saved, but nobody replies.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="two" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label className="field">
+                Business name
+                <input value={name} onChange={(e) => setName(e.target.value)} />
+              </label>
+              <label className="field">
+                Your WhatsApp for alerts &amp; digests
+                <input placeholder="91XXXXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </label>
+            </div>
+            <div className="field" style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)" }}>
+              Reply language
+              <div className="choice-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+                {LANGUAGE_MODES.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    className={`choice ${langMode === m.value ? "on" : ""}`}
+                    onClick={() => {
                       setLangMode(m.value);
                       setSaved(null);
                     }}
-                  />
-                  <span>
-                    <b style={{ fontWeight: 700 }}>{m.label}</b>{" "}
-                    <span style={{ color: "var(--muted)", fontSize: 12.5 }}>— {m.hint}</span>
-                  </span>
-                </label>
-              ))}
+                  >
+                    <b>{m.label}</b>
+                    <small>{m.hint}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="field">
+              Notes for the receptionist <small>address, parking, UPI id, house rules — anything it should know</small>
+              <textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. We're on the 1st floor above Café Coffee Day. UPI: blush@okhdfc. No walk-ins after 7:30 PM." />
+            </label>
+            <label className="field">
+              Google review link <small>customers get it 2 hours after a visit</small>
+              <input placeholder="https://g.page/r/…/review" value={reviewLink} onChange={(e) => setReviewLink(e.target.value)} />
+            </label>
+            <div className="row">
+              <button className="btn" onClick={save} disabled={busy || !name.trim()}>
+                {busy ? "Saving…" : "Save changes"}
+              </button>
+              {saved && <span style={{ color: "var(--emerald-dark)", fontSize: 13 }}>{saved}</span>}
+              {err && <span style={{ color: "var(--danger)", fontSize: 13 }}>{err}</span>}
             </div>
           </div>
+        </section>
 
-          <label style={{ fontSize: 13, fontWeight: 700 }}>
-            Notes for the agent
-            <textarea
-              style={{
-                display: "block",
-                width: "100%",
-                marginTop: 6,
-                minHeight: 90,
-                fontFamily: "inherit",
-                fontSize: 14,
-                padding: "9px 12px",
-                border: "1px solid var(--line)",
-                borderRadius: 9,
-              }}
-              placeholder="Address, parking, UPI id, house rules — anything it should know."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </label>
-
-          <label style={{ fontSize: 13, fontWeight: 700 }}>
-            Google review link
-            <input
-              style={{ display: "block", width: "100%", marginTop: 6 }}
-              placeholder="https://g.page/r/…/review — customers get this 2h after each visit"
-              value={reviewLink}
-              onChange={(e) => setReviewLink(e.target.value)}
-            />
-          </label>
-
-          <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
-            <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
-            <span>
-              <b>Agent is live</b>{" "}
-              <span style={{ color: "var(--muted)", fontSize: 12.5 }}>
-                — untick to silence it (messages still get stored)
-              </span>
-            </span>
-          </label>
-
-          <div className="row">
-            <button className="btn" onClick={save} disabled={busy || !name.trim()}>
-              Save settings
-            </button>
-            {saved && <span style={{ color: "#0f6e42", fontSize: 13 }}>{saved}</span>}
-            {err && <span style={{ color: "#b3442e", fontSize: 13 }}>{err}</span>}
-          </div>
-        </div>
+        <section id="whatsapp">
+          <WhatsAppCard businessId={full.id} />
+        </section>
+        <section id="listing">
+          <ListingCard />
+        </section>
+        <section id="team-access">
+          <TeamAccessCard businessId={full.id} />
+        </section>
+        <section id="alerts">
+          <AlertsCard />
+        </section>
+        <section id="grow">
+          <GrowCard acct={acct} />
+        </section>
       </div>
-    </>
+    </div>
   );
 }

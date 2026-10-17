@@ -1,12 +1,17 @@
 "use client";
 
+/* The menu the AI quotes from — grouped by category, edited in a drawer.
+   Services take a time slot; products are quotable but never booked. */
+
 import { useCallback, useEffect, useState } from "react";
 import { api, rupees } from "@/lib/api";
 import { useBusiness } from "@/lib/business-context";
+import { Drawer, Icon } from "../ui";
 
 type Service = {
   id: string;
   name: string;
+  category: string | null;
   item_type: "service" | "product";
   price_minor: number;
   duration_minutes: number;
@@ -14,168 +19,255 @@ type Service = {
   rebook_days: number | null;
 };
 
-export default function ServicesPage() {
-  const { business, error } = useBusiness();
-  const [rows, setRows] = useState<Service[] | null>(null);
-  const [name, setName] = useState("");
-  const [type, setType] = useState<"service" | "product">("service");
-  const [price, setPrice] = useState("");
-  const [duration, setDuration] = useState("30");
-  const [rebookDays, setRebookDays] = useState("");
+function ServiceDrawer({
+  businessId,
+  row,
+  categories,
+  onClose,
+  onDone,
+}: {
+  businessId: string;
+  row: Service | null;
+  categories: string[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [type, setType] = useState<"service" | "product">(row?.item_type ?? "service");
+  const [name, setName] = useState(row?.name ?? "");
+  const [category, setCategory] = useState(row?.category ?? "");
+  const [price, setPrice] = useState(row ? String(row.price_minor / 100) : "");
+  const [duration, setDuration] = useState(row ? String(row.duration_minutes) : "30");
+  const [rebook, setRebook] = useState(row?.rebook_days ? String(row.rebook_days) : "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    if (!business) return;
-    api<Service[]>(`businesses/${business.id}/services`).then(setRows);
-  }, [business]);
-  useEffect(load, [load]);
-
-  async function add() {
-    if (!business || !name.trim() || !price) return;
+  async function save() {
     setBusy(true);
     setErr(null);
+    const body = {
+      name: name.trim(),
+      item_type: type,
+      category: category.trim() || null,
+      price_minor: Math.round(parseFloat(price || "0") * 100),
+      duration_minutes: type === "product" ? 0 : parseInt(duration || "30", 10),
+      rebook_days: type === "service" && rebook ? parseInt(rebook, 10) : null,
+    };
     try {
-      await api(`businesses/${business.id}/services`, {
-        method: "POST",
-        body: JSON.stringify({
-          name: name.trim(),
-          item_type: type,
-          price_minor: Math.round(parseFloat(price) * 100),
-          duration_minutes: type === "product" ? 0 : parseInt(duration || "30", 10),
-          rebook_days: rebookDays ? parseInt(rebookDays, 10) : null,
-        }),
-      });
-      setName("");
-      setPrice("");
-      load();
+      if (row) await api(`services/${row.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      else await api(`businesses/${businessId}/services`, { method: "POST", body: JSON.stringify(body) });
+      onDone();
     } catch (e) {
       setErr((e as Error).message);
-    } finally {
       setBusy(false);
     }
   }
 
-  async function toggle(row: Service) {
-    await api(`services/${row.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ is_active: !row.is_active }),
-    });
-    load();
+  async function remove() {
+    if (!row || !confirm(`Delete “${row.name}”? Past bookings keep their price.`)) return;
+    setBusy(true);
+    try {
+      await api(`services/${row.id}`, { method: "DELETE" });
+      onDone();
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
   }
 
-  async function remove(row: Service) {
-    if (!confirm(`Delete “${row.name}”?`)) return;
-    await api(`services/${row.id}`, { method: "DELETE" });
-    load();
+  return (
+    <Drawer
+      title={row ? `Edit ${row.name}` : "Add to the menu"}
+      sub="The AI quotes prices only from this list — it never invents or discounts."
+      onClose={onClose}
+      footer={
+        <>
+          {row && (
+            <button className="btn danger" onClick={remove} disabled={busy}>
+              Delete
+            </button>
+          )}
+          <span className="spacer" />
+          <button className="btn ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn" onClick={save} disabled={busy || !name.trim() || !price}>
+            {busy ? "Saving…" : row ? "Save" : "Add"}
+          </button>
+        </>
+      }
+    >
+      <div className="choice-grid">
+        <button type="button" className={`choice ${type === "service" ? "on" : ""}`} onClick={() => setType("service")}>
+          <b>Service</b>
+          <small>Takes a time slot</small>
+        </button>
+        <button type="button" className={`choice ${type === "product" ? "on" : ""}`} onClick={() => setType("product")}>
+          <b>Product</b>
+          <small>Quoted, never booked</small>
+        </button>
+      </div>
+      <label className="field">
+        Name
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={type === "service" ? "e.g. Haircut" : "e.g. Argan oil 100 ml"} autoFocus />
+      </label>
+      <label className="field">
+        Category <small>groups a long menu — Hair, Skin, Nails…</small>
+        <input list="svc-cats" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Hair" />
+        <datalist id="svc-cats">
+          {categories.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+      </label>
+      <div className="two">
+        <label className="field">
+          Price (₹)
+          <input type="number" min="0" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" />
+        </label>
+        {type === "service" && (
+          <label className="field">
+            Duration (min)
+            <input type="number" min="5" step="5" value={duration} onChange={(e) => setDuration(e.target.value)} />
+          </label>
+        )}
+      </div>
+      {type === "service" && (
+        <label className="field">
+          Rebook nudge <small>days after a visit — leave blank to turn off</small>
+          <input type="number" min="1" value={rebook} onChange={(e) => setRebook(e.target.value)} placeholder="e.g. 28" />
+        </label>
+      )}
+      {err && <p className="err">{err}</p>}
+    </Drawer>
+  );
+}
+
+export default function ServicesPage() {
+  const { business, error } = useBusiness();
+  const [rows, setRows] = useState<Service[] | null>(null);
+  const [filter, setFilter] = useState<"all" | "service" | "product">("all");
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<Service | "new" | null>(null);
+  const canEdit = business?.role !== "staff";
+
+  const load = useCallback(() => {
+    if (!business) return;
+    api<Service[]>(`businesses/${business.id}/services`).then((r) => setRows(r.filter((s) => s.name !== "Blocked time")));
+  }, [business]);
+  useEffect(load, [load]);
+
+  async function toggle(row: Service) {
+    setRows((rs) => rs?.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)) ?? null);
+    await api(`services/${row.id}`, { method: "PATCH", body: JSON.stringify({ is_active: !row.is_active }) }).catch(load);
   }
 
   if (error) return <p className="sub">Could not reach the Footfall API: {error}</p>;
 
+  const all = rows ?? [];
+  const categories = [...new Set(all.map((r) => r.category).filter(Boolean))] as string[];
+  const shown = all.filter((r) => (filter === "all" || r.item_type === filter) && (!q || r.name.toLowerCase().includes(q.toLowerCase())));
+  const groups = [...new Set(shown.map((r) => r.category ?? ""))].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
+
   return (
     <>
-      <h1>Services &amp; products</h1>
-      <p className="sub">
-        The agent quotes prices only from this list. Services book time slots; products are
-        quotable but never take a slot.
-      </p>
-
-      <div className="db-card">
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
         <div className="row">
-          <input
-            placeholder="Name — e.g. Haircut, Argan oil 100ml"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ flex: 2, minWidth: 200 }}
-          />
-          <select value={type} onChange={(e) => setType(e.target.value as "service" | "product")}>
-            <option value="service">Service</option>
-            <option value="product">Product</option>
-          </select>
-          <input
-            placeholder="Price ₹"
-            type="number"
-            min="0"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            style={{ width: 110 }}
-          />
-          {type === "service" && (
-            <>
-              <input
-                placeholder="Minutes"
-                type="number"
-                min="5"
-                step="5"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                style={{ width: 100 }}
-              />
-              <input
-                placeholder="Rebook after (days)"
-                title="Send a 'time for your next visit' nudge this many days after a visit. Blank = off."
-                type="number"
-                min="1"
-                value={rebookDays}
-                onChange={(e) => setRebookDays(e.target.value)}
-                style={{ width: 150 }}
-              />
-            </>
-          )}
-          <button className="btn" onClick={add} disabled={busy || !name.trim() || !price}>
-            Add
-          </button>
+          <div className="seg">
+            {(["all", "service", "product"] as const).map((k) => (
+              <button key={k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>
+                {k === "all" ? "Everything" : k === "service" ? "Services" : "Products"}
+                <span className="faint" style={{ marginLeft: 6, fontWeight: 500 }}>
+                  {k === "all" ? all.length : all.filter((r) => r.item_type === k).length}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 11, top: 10, color: "var(--faint)" }}>
+              <Icon name="search" size={17} />
+            </span>
+            <input placeholder="Search the menu" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 240, paddingLeft: 36 }} />
+          </div>
         </div>
-        {err && <p style={{ color: "#b3442e", fontSize: 13, margin: "10px 0 0" }}>{err}</p>}
-      </div>
-
-      <div className="db-card">
-        {rows === null ? (
-          <div className="empty">Loading…</div>
-        ) : rows.length === 0 ? (
-          <div className="empty">Nothing yet — add your first service above.</div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Price</th>
-                <th>Duration</th>
-                <th>Rebook nudge</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.filter((r) => r.name !== "Blocked time").map((r) => (
-                <tr key={r.id} style={{ opacity: r.is_active ? 1 : 0.55 }}>
-                  <td>{r.name}</td>
-                  <td>
-                    <span className={`pill ${r.item_type}`}>{r.item_type}</span>
-                  </td>
-                  <td>{rupees(r.price_minor)}</td>
-                  <td>{r.item_type === "product" ? "—" : `${r.duration_minutes} min`}</td>
-                  <td>{r.rebook_days ? `${r.rebook_days} days` : "—"}</td>
-                  <td>
-                    <span className={`pill ${r.is_active ? "confirmed" : "off"}`}>
-                      {r.is_active ? "live" : "hidden"}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    <button className="btn ghost" onClick={() => toggle(r)}>
-                      {r.is_active ? "Hide" : "Show"}
-                    </button>{" "}
-                    <button className="btn danger" onClick={() => remove(r)}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {canEdit && (
+          <button className="btn" onClick={() => setEditing("new")}>
+            <Icon name="plus" size={16} /> Add service
+          </button>
         )}
       </div>
+
+      {rows === null ? (
+        <div className="card">
+          <div className="empty">Loading…</div>
+        </div>
+      ) : all.length === 0 ? (
+        <div className="card">
+          <div className="empty">
+            <b>Your menu is empty</b>
+            Add services with prices and durations — the AI quotes and books from this list.
+          </div>
+        </div>
+      ) : (
+        groups.map((g) => (
+          <div key={g || "_"} className="card flush">
+            <div className="card-h" style={{ margin: 0, padding: "14px 18px", borderBottom: "1px solid var(--line)" }}>
+              <h2>{g || "Uncategorised"}</h2>
+              <span className="faint" style={{ fontSize: 12.5 }}>
+                {shown.filter((r) => (r.category ?? "") === g).length} items
+              </span>
+            </div>
+            <table style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "46%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "18%" }} />
+              </colgroup>
+              <tbody>
+                {shown
+                  .filter((r) => (r.category ?? "") === g)
+                  .map((r) => (
+                    <tr key={r.id} style={{ cursor: canEdit ? "pointer" : undefined, opacity: r.is_active ? 1 : 0.5 }} onClick={() => canEdit && setEditing(r)}>
+                      <td>
+                        <b style={{ fontWeight: 600 }}>{r.name}</b>
+                        <span className="cell-sub">
+                          {r.item_type === "product" ? "Product" : `${r.duration_minutes} min`}
+                          {r.rebook_days ? ` · rebook nudge after ${r.rebook_days} days` : ""}
+                        </span>
+                      </td>
+                      <td className="num" style={{ fontWeight: 600 }}>
+                        {rupees(r.price_minor)}
+                      </td>
+                      <td>
+                        <span className={`pill ${r.item_type}`}>{r.item_type === "product" ? "Product" : "Service"}</span>
+                      </td>
+                      <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                        <label className="switch" title={r.is_active ? "The AI offers this" : "Hidden from the AI"}>
+                          <input type="checkbox" checked={r.is_active} disabled={!canEdit} onChange={() => toggle(r)} />
+                          <span />
+                          <em>{r.is_active ? "Live" : "Hidden"}</em>
+                        </label>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ))
+      )}
+
+      {editing && business && (
+        <ServiceDrawer
+          businessId={business.id}
+          row={editing === "new" ? null : editing}
+          categories={categories}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
     </>
   );
 }

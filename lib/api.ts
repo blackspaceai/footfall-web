@@ -55,6 +55,7 @@ export type Business = {
   role: Role;
   plan: string;
   verification_status: "unverified" | "pending_review" | "verified";
+  google_place_id: string | null;
   place_address: string | null;
 };
 

@@ -47,7 +47,7 @@ const POLL_MS = 20_000;
 const TOAST_MS = 9_000;
 
 const urlFor = (kind: string) =>
-  kind === "needs_owner" || kind === "agent_failed" ? "/dashboard/inbox" : "/dashboard/bookings";
+  kind === "needs_owner" || kind === "agent_failed" ? "/dashboard/inbox" : "/dashboard/calendar";
 
 function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
   const pad = "=".repeat((4 - (base64url.length % 4)) % 4);

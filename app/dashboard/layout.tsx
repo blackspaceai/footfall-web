@@ -1,93 +1,144 @@
 "use client";
 
+import "./dashboard.css";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
 import { BusinessProvider, useBusiness } from "@/lib/business-context";
 import { AlertsProvider, useAlerts } from "@/lib/alerts";
-import { AlertsBell } from "./alerts-bell";
 import { api, type Me, type Role } from "@/lib/api";
+import { AlertsBell } from "./alerts-bell";
+import { BookingsProvider, useBookings } from "./booking-drawers";
+import { Onboarding } from "./onboarding";
+import { Icon, Wordmark } from "./ui";
 
 const RANK: Record<Role, number> = { staff: 1, manager: 2, owner: 3 };
 
-const I = {
-  today: <path d="M8 2v3M16 2v3M3.5 9h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z" />,
-  inbox: <path d="M3.5 13.5h4l1.5 3h6l1.5-3h4M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18V7A1.5 1.5 0 0 1 5 5.5Z" />,
-  bookings: <path d="M4 6.5h16M4 12h16M4 17.5h10" />,
-  insights: <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" />,
-  services: <path d="M20 7.5 12 3 4 7.5v9L12 21l8-4.5v-9ZM12 12v9M12 12 4 7.5M12 12l8-4.5" />,
-  team: <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 10.5A3.25 3.25 0 1 0 10 4a3.25 3.25 0 0 0 0 6.5ZM20 19v-1.2a3.2 3.2 0 0 0-2.5-3.1M15 4.2a3.25 3.25 0 0 1 0 6.1" />,
-  hours: <path d="M12 7v5l3.5 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />,
-  settings: <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.5a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5.4 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.5h4l.4-2.5a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z" />,
+type NavItem = { href: string; label: string; icon: string; minRole?: Role; badge?: "inbox" };
+const NAV: { label?: string; items: NavItem[] }[] = [
+  {
+    items: [
+      { href: "/dashboard", label: "Home", icon: "home" },
+      { href: "/dashboard/calendar", label: "Calendar", icon: "calendar" },
+      { href: "/dashboard/inbox", label: "Inbox", icon: "inbox", badge: "inbox" },
+      { href: "/dashboard/bookings", label: "Bookings", icon: "list" },
+    ],
+  },
+  {
+    label: "Business",
+    items: [
+      { href: "/dashboard/insights", label: "Insights", icon: "chart", minRole: "manager" },
+      { href: "/dashboard/services", label: "Services & products", icon: "box" },
+      { href: "/dashboard/team", label: "Team", icon: "team" },
+      { href: "/dashboard/hours", label: "Opening hours", icon: "clock" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [{ href: "/dashboard/settings", label: "Settings", icon: "settings" }],
+  },
+];
+
+const TITLES: Record<string, string> = {
+  "/dashboard": "Home",
+  "/dashboard/calendar": "Calendar",
+  "/dashboard/inbox": "Inbox",
+  "/dashboard/bookings": "Bookings",
+  "/dashboard/insights": "Insights",
+  "/dashboard/services": "Services & products",
+  "/dashboard/team": "Team",
+  "/dashboard/hours": "Opening hours",
+  "/dashboard/settings": "Settings",
+  "/dashboard/admin": "Admin",
 };
 
-function Icon({ d }: { d: React.ReactNode }) {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {d}
-    </svg>
-  );
-}
-
-const NAV: { href: string; label: string; icon: React.ReactNode; minRole?: Role }[] = [
-  { href: "/dashboard", label: "Today", icon: I.today },
-  { href: "/dashboard/inbox", label: "Inbox", icon: I.inbox },
-  { href: "/dashboard/bookings", label: "Bookings", icon: I.bookings },
-  { href: "/dashboard/insights", label: "Insights", icon: I.insights, minRole: "manager" },
-  { href: "/dashboard/services", label: "Services & products", icon: I.services },
-  { href: "/dashboard/team", label: "Team", icon: I.team },
-  { href: "/dashboard/hours", label: "Hours", icon: I.hours },
-  { href: "/dashboard/settings", label: "Settings", icon: I.settings },
-];
+const bizInitial = (name?: string) => (name ?? "?").trim()[0]?.toUpperCase() ?? "?";
 
 function BusinessSwitcher() {
   const { business, businesses, select } = useBusiness();
-  if (businesses.length < 2) return null;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  if (!business) return null;
+  const many = businesses.length > 1;
   return (
-    <select
-      value={business?.id ?? ""}
-      onChange={(e) => select(e.target.value)}
-      style={{
-        margin: "0 0 14px",
-        width: "100%",
-        background: "rgba(125, 242, 168, 0.08)",
-        color: "var(--ivory, #eafff3)",
-        border: "1px solid rgba(143, 212, 180, 0.3)",
-        borderRadius: 9,
-        padding: "8px 10px",
-        fontSize: 13.5,
-        fontWeight: 600,
-      }}
-    >
-      {businesses.map((b) => (
-        <option key={b.id} value={b.id} style={{ color: "#10241b" }}>
-          {b.name}
-        </option>
-      ))}
-    </select>
+    <div className="biz" ref={ref}>
+      <button className="biz-btn" onClick={() => many && setOpen((o) => !o)} style={{ cursor: many ? "pointer" : "default" }}>
+        <span className="biz-ava">{bizInitial(business.name)}</span>
+        <span className="biz-meta">
+          <b>{business.name}</b>
+          <small>
+            <i className={`live-dot ${business.is_live ? "" : "off"}`} />
+            {business.is_live ? "AI receptionist live" : "AI paused"}
+            {business.role !== "owner" && ` · ${business.role}`}
+          </small>
+        </span>
+        {many && <Icon name="down" size={16} />}
+      </button>
+      {open && (
+        <div className="biz-menu">
+          {businesses.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => {
+                select(b.id);
+                setOpen(false);
+              }}
+            >
+              <span className="biz-ava">{bizInitial(b.name)}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>{b.name}</span>
+              {b.id === business.id && <Icon name="check" size={16} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
+}
+
+function useNeedsYou(): number {
+  const { business } = useBusiness();
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!business) return;
+    const load = () =>
+      api<{ status: string }[]>(`businesses/${business.id}/conversations`)
+        .then((rows) => setN(rows.filter((r) => r.status === "human").length))
+        .catch(() => {});
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [business]);
+  return n;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { disablePush } = useAlerts();
-  const { business } = useBusiness();
-  const [superadmin, setSuperadmin] = useState(false);
-  useEffect(() => {
-    api<Me>("me").then((m) => setSuperadmin(m.is_superadmin)).catch(() => {});
-  }, []);
-  const nav = NAV.filter((n) => !n.minRole || RANK[business?.role ?? "owner"] >= RANK[n.minRole]);
-  if (superadmin) nav.push({ href: "/dashboard/review", label: "Review", icon: I.settings });
+  const { business, loaded, refresh } = useBusiness();
+  const { openNew } = useBookings();
+  const needsYou = useNeedsYou();
+  const [me, setMe] = useState<Me | null>(null);
+  const [email, setEmail] = useState<string>("");
 
   useEffect(() => {
-    if (!supabaseConfigured) return; // dev mode without Supabase — no gate
+    api<Me>("me").then(setMe).catch(() => {});
+    if (!supabaseConfigured) {
+      setEmail("Local preview");
+      return;
+    }
     supabaseBrowser()
       .auth.getSession()
       .then(({ data }) => {
         if (!data.session) router.replace("/login");
+        else setEmail(data.session.user.email ?? "");
       });
   }, [router]);
 
@@ -98,38 +149,86 @@ function Shell({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }
 
+  const role: Role = business?.role ?? "owner";
+  const groups = NAV.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => !i.minRole || RANK[role] >= RANK[i.minRole]),
+  }));
+  if (me?.is_superadmin) {
+    groups[2].items = [...groups[2].items, { href: "/dashboard/admin", label: "Admin", icon: "shield" }];
+  }
+  const hasBusiness = Boolean(business);
+  const title = TITLES[pathname] ?? "";
+
+  if (loaded && !hasBusiness && pathname !== "/dashboard/admin") {
+    return (
+      <div className="db ob-shell">
+        <Onboarding
+          onDone={() => {
+            refresh();
+            router.push("/dashboard");
+          }}
+          account={email}
+          onSignOut={supabaseConfigured ? signOut : undefined}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="db">
       <aside className="db-side">
-        <div className="brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo/footfall-mark-transparent.svg" alt="" />
-          footfall
-          <AlertsBell />
-        </div>
+        <Link href="/dashboard" className="brand" aria-label="Footfall home">
+          <Wordmark height={30} />
+        </Link>
         <BusinessSwitcher />
-        <nav>
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={pathname === item.href ? "active" : ""}
-            >
-              <Icon d={item.icon} />
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className="foot">
+        {hasBusiness && (
+          <nav>
+            {groups.map((g, gi) => (
+              <div key={gi} style={{ display: "contents" }}>
+                {g.label && <div className="nav-label">{g.label}</div>}
+                {g.items.map((item) => (
+                  <Link key={item.href} href={item.href} className={pathname === item.href ? "active" : ""}>
+                    <Icon name={item.icon} />
+                    <span>{item.label}</span>
+                    {item.badge === "inbox" && needsYou > 0 && <span className="nav-badge">{needsYou}</span>}
+                  </Link>
+                ))}
+              </div>
+            ))}
+          </nav>
+        )}
+        <div className="side-foot">
+          <span className="me-ava">{(email || "?")[0].toUpperCase()}</span>
+          <span className="me">
+            <b>{email || "…"}</b>
+            <small>{me?.is_superadmin ? "BlackSpace admin" : `Signed in · ${role}`}</small>
+          </span>
           {supabaseConfigured && (
-            <a onClick={signOut} style={{ cursor: "pointer", display: "block", marginBottom: 8 }}>
-              Sign out
-            </a>
+            <button className="icon-btn" onClick={signOut} title="Sign out" aria-label="Sign out">
+              <Icon name="logout" />
+            </button>
           )}
-          by BlackSpace AI
         </div>
       </aside>
-      <main className="db-main">{children}</main>
+      <main className="db-main">
+        {hasBusiness && (
+          <header className="topbar">
+            <div>
+              <h1>{title}</h1>
+            </div>
+            <span className="spacer" />
+            <AlertsBell />
+            <button className="btn accent" onClick={() => openNew()}>
+              <Icon name="plus" size={16} />
+              New booking
+            </button>
+          </header>
+        )}
+        <div className={`page ${pathname === "/dashboard/calendar" || pathname === "/dashboard/admin" ? "wide" : ""}`}>
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
@@ -138,7 +237,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <BusinessProvider>
       <AlertsProvider>
-        <Shell>{children}</Shell>
+        <BookingsProvider>
+          <Shell>{children}</Shell>
+        </BookingsProvider>
       </AlertsProvider>
     </BusinessProvider>
   );

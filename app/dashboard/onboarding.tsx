@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, createBusiness, type Me } from "@/lib/api";
+import { Icon, Wordmark } from "./ui";
 
 type Suggestion = { place_id: string; name: string; secondary: string | null };
 type Listing = {
@@ -33,11 +34,49 @@ const errText = (e: unknown) => (e instanceof Error ? e.message : "Something wen
 function Step({ n, title, sub, children }: { n: number; title: string; sub: string; children: React.ReactNode }) {
   return (
     <div className="db-card ob-card">
-      <div className="ob-step">Step {n} of 2</div>
-      <h1 style={{ fontSize: 22 }}>{title}</h1>
+      <div className="ob-step">Step {n}</div>
+      <h1 className="ob-title">{title}</h1>
       <p className="sub">{sub}</p>
       {children}
     </div>
+  );
+}
+
+function Rail({ phase, otp, account, onSignOut }: { phase: "phone" | "find" | "wait"; otp: boolean; account: string; onSignOut?: () => void }) {
+  const steps = [
+    ...(otp ? [{ key: "phone", title: "Verify your phone", sub: "So nobody else can sign up as your shop" }] : []),
+    { key: "find", title: "Find your business", sub: "From Google Maps — we check it's really yours" },
+    { key: "whatsapp", title: "Connect WhatsApp", sub: "Your receptionist answers on your number" },
+    { key: "menu", title: "Add your menu and team", sub: "Prices and people the AI books from" },
+  ];
+  const at = steps.findIndex((s) => s.key === (phase === "wait" ? "find" : phase));
+  return (
+    <aside className="ob-rail">
+      <Wordmark height={28} />
+      <h2>Let&apos;s get your front desk answering.</h2>
+      <p>About five minutes. Your AI receptionist goes live on WhatsApp once your number is connected.</p>
+      <ol className="ob-steps">
+        {steps.map((s, i) => (
+          <li key={s.key} className={i < at ? "done" : i === at ? "now" : ""}>
+            <span className="dot">{i < at ? "✓" : i + 1}</span>
+            <span>
+              <b>{s.title}</b>
+              <small>{s.sub}</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="ob-rail-foot">
+        <span className="grow" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+          {account}
+        </span>
+        {onSignOut && (
+          <button onClick={onSignOut}>
+            <Icon name="logout" size={15} /> Sign out
+          </button>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -364,7 +403,7 @@ function FindStep({ me, onCreated, onRequested }: { me: Me; onCreated: () => voi
   );
 }
 
-export function Onboarding({ onDone }: { onDone: () => void }) {
+export function Onboarding({ onDone, account = "", onSignOut }: { onDone: () => void; account?: string; onSignOut?: () => void }) {
   const [me, setMe] = useState<Me | null>(null);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [sent, setSent] = useState<"join" | "dispute" | null>(null);
@@ -387,10 +426,14 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     return () => clearInterval(t);
   }, [waiting, sent, onDone]);
 
-  if (err) return <p className="ob-err">{err}</p>;
+  if (err) return <p className="ob-err" style={{ padding: 32 }}>{err}</p>;
   if (!me) return null;
+  const phase = waiting ? "wait" : me.otp_available && !me.phone_verified ? "phone" : "find";
 
   return (
+    <div className="ob-screen">
+      <Rail phase={phase} otp={me.otp_available} account={account} onSignOut={onSignOut} />
+      <main className="ob-main">
     <div className="ob">
       {waiting && (
         <div className="db-card ob-card ob-wait">
@@ -409,6 +452,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       {!waiting && (!me.otp_available || me.phone_verified) && (
         <FindStep me={me} onCreated={onDone} onRequested={(kind) => { setSent(kind); load(); }} />
       )}
+    </div>
+      </main>
     </div>
   );
 }

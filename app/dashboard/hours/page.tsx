@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useBusiness } from "@/lib/business-context";
+import { Avatar } from "../ui";
 
 type HoursRow = { weekday: number; opens_at: string; closes_at: string };
 type Staff = { id: string; name: string; is_active: boolean };
@@ -97,88 +98,85 @@ export default function HoursPage() {
     }
   }
 
-  const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: "7px 16px",
-    borderRadius: 99,
-    fontSize: 13,
-    fontWeight: 700,
-    cursor: "pointer",
-    border: active ? "1px solid var(--emerald)" : "1px solid var(--line)",
-    background: active ? "var(--emerald)" : "transparent",
-    color: active ? "#fff" : "var(--muted)",
-  });
-
   if (error) return <p className="sub">Could not reach the Footfall API: {error}</p>;
 
   const memberName = staff.find((s) => s.id === tab)?.name;
+  const span = (hm: string) => ((parseInt(hm.slice(0, 2), 10) * 60 + parseInt(hm.slice(3, 5), 10) - 360) / (17 * 60)) * 100;
 
   return (
-    <>
-      <h1>Hours &amp; calendars</h1>
-      <p className="sub">
-        Business hours are the default; give any team member their own schedule and the agent
-        books them accordingly.
-      </p>
-
-      <div className="row" style={{ marginBottom: 14 }}>
-        <button style={tabStyle(tab === null)} onClick={() => setTab(null)}>
-          Business
+    <div className="set-grid" style={{ gridTemplateColumns: "240px minmax(0, 1fr)" }}>
+      <div className="card" style={{ padding: 8, marginBottom: 0 }}>
+        <button className={`hours-pick ${tab === null ? "on" : ""}`} onClick={() => setTab(null)}>
+          <span className="biz-ava" style={{ width: 30, height: 30, flexBasis: 30, fontSize: 13, borderRadius: 9 }}>
+            {(business?.name ?? "?")[0]}
+          </span>
+          <span>
+            <b>Business hours</b>
+            <small>The default for everyone</small>
+          </span>
         </button>
+        {staff.length > 0 && <div className="nav-label" style={{ color: "var(--faint)", padding: "12px 10px 4px" }}>Team</div>}
         {staff.map((s) => (
-          <button key={s.id} style={tabStyle(tab === s.id)} onClick={() => setTab(s.id)}>
-            {s.name}
+          <button key={s.id} className={`hours-pick ${tab === s.id ? "on" : ""}`} onClick={() => setTab(s.id)}>
+            <Avatar name={s.name} size={30} />
+            <span>
+              <b>{s.name}</b>
+              <small>Own schedule or business hours</small>
+            </span>
           </button>
         ))}
       </div>
 
-      <div className="db-card">
+      <div className="card" style={{ marginBottom: 0 }}>
+        <div className="card-h">
+          <h2>{tab === null ? "When you're open" : `${memberName}'s schedule`}</h2>
+          <span className="spacer" />
+          {days && (
+            <button
+              className="btn ghost sm"
+              onClick={() => setDays((d) => d!.map((row, i) => (i === 0 ? row : { ...d![0] })))}
+              title="Use Monday's hours for every day"
+            >
+              Copy Monday to all days
+            </button>
+          )}
+        </div>
         {tab !== null && !custom && (
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--muted)" }}>
-            {memberName} currently follows business hours. Edit below and save to give them a
-            custom schedule.
+          <p className="ib-banner ai" style={{ margin: "0 0 14px", borderRadius: 10, border: "1px solid #cde9d9" }}>
+            {memberName} follows business hours. Change anything below and save to give them their own.
           </p>
         )}
         {days === null ? (
           <div className="empty">Loading…</div>
         ) : (
-          <table>
-            <tbody>
-              {days.map((d, i) => (
-                <tr key={i}>
-                  <td style={{ width: 130, fontWeight: 600 }}>{DAYS[i]}</td>
-                  <td style={{ width: 90 }}>
-                    <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={d.open}
-                        onChange={(e) => patch(i, { open: e.target.checked })}
-                      />
-                      {d.open ? (tab === null ? "Open" : "Works") : tab === null ? "Closed" : "Off"}
-                    </label>
-                  </td>
-                  <td>
-                    {d.open && (
-                      <span className="row">
-                        <input
-                          type="time"
-                          value={d.opens_at}
-                          onChange={(e) => patch(i, { opens_at: e.target.value })}
-                        />
-                        <span style={{ color: "var(--muted)" }}>to</span>
-                        <input
-                          type="time"
-                          value={d.closes_at}
-                          onChange={(e) => patch(i, { closes_at: e.target.value })}
-                        />
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="hours-rows">
+            {days.map((d, i) => (
+              <div key={i} className={`hours-row ${d.open ? "" : "off"}`}>
+                <b>{DAYS[i]}</b>
+                <label className="switch">
+                  <input type="checkbox" checked={d.open} onChange={(e) => patch(i, { open: e.target.checked })} />
+                  <span />
+                  <em>{d.open ? (tab === null ? "Open" : "Works") : tab === null ? "Closed" : "Off"}</em>
+                </label>
+                {d.open ? (
+                  <span className="row" style={{ flexWrap: "nowrap" }}>
+                    <input type="time" value={d.opens_at} onChange={(e) => patch(i, { opens_at: e.target.value })} />
+                    <span className="muted">to</span>
+                    <input type="time" value={d.closes_at} onChange={(e) => patch(i, { closes_at: e.target.value })} />
+                  </span>
+                ) : (
+                  <span className="faint" style={{ fontSize: 13 }}>
+                    {tab === null ? "The AI won't offer slots" : "Not booked this day"}
+                  </span>
+                )}
+                <span className="hours-bar">
+                  {d.open && <i style={{ left: `${Math.max(0, span(d.opens_at))}%`, width: `${Math.max(2, span(d.closes_at) - span(d.opens_at))}%` }} />}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
-        <div className="row" style={{ marginTop: 16 }}>
+        <div className="row" style={{ marginTop: 18 }}>
           <button className="btn" onClick={() => save()} disabled={busy || !days}>
             {tab === null ? "Save hours" : `Save ${memberName}'s schedule`}
           </button>
@@ -187,10 +185,10 @@ export default function HoursPage() {
               Reset to business hours
             </button>
           )}
-          {saved && <span style={{ color: "#0f6e42", fontSize: 13 }}>{saved}</span>}
-          {err && <span style={{ color: "#b3442e", fontSize: 13 }}>{err}</span>}
+          {saved && <span style={{ color: "var(--emerald-dark)", fontSize: 13 }}>{saved}</span>}
+          {err && <span style={{ color: "var(--danger)", fontSize: 13 }}>{err}</span>}
         </div>
       </div>
-    </>
+    </div>
   );
 }

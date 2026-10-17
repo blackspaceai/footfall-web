@@ -46,9 +46,11 @@ export function TeamAccessCard({ businessId }: { businessId: string }) {
   }
 
   return (
-    <div className="db-card" style={{ maxWidth: 640 }}>
-      <h2 style={{ fontSize: 16, margin: "0 0 4px" }}>Team access</h2>
-      <p className="sub" style={{ marginTop: 0 }}>
+    <div className="card">
+      <div className="card-h">
+        <h2>Team access</h2>
+      </div>
+      <p className="section-sub">
         Add your manager or receptionist here instead of sharing your login. They sign up with
         their own number and get access automatically.
       </p>
