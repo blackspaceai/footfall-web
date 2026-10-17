@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
 import { BusinessProvider, useBusiness } from "@/lib/business-context";
+import { AlertsProvider, useAlerts } from "@/lib/alerts";
+import { AlertsBell } from "./alerts-bell";
 
 const I = {
   today: <path d="M8 2v3M16 2v3M3.5 9h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z" />,
@@ -68,6 +70,7 @@ function BusinessSwitcher() {
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { disablePush } = useAlerts();
 
   useEffect(() => {
     if (!supabaseConfigured) return; // dev mode without Supabase — no gate
@@ -79,6 +82,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   async function signOut() {
+    // A shared computer must not keep buzzing with the last owner's bookings.
+    await disablePush().catch(() => {});
     if (supabaseConfigured) await supabaseBrowser().auth.signOut();
     router.replace("/login");
   }
@@ -90,6 +95,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo/footfall-mark-transparent.svg" alt="" />
           footfall
+          <AlertsBell />
         </div>
         <BusinessSwitcher />
         <nav>
@@ -121,7 +127,9 @@ function Shell({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BusinessProvider>
-      <Shell>{children}</Shell>
+      <AlertsProvider>
+        <Shell>{children}</Shell>
+      </AlertsProvider>
     </BusinessProvider>
   );
 }
