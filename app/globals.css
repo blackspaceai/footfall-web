@@ -363,3 +363,60 @@ html, body { margin: 0; padding: 0; }
 @media (max-width: 720px) {
   .bell-panel { position: fixed; top: 64px; left: 12px; right: 12px; width: auto; }
 }
+
+/* ----- onboarding (sign-up) ----- */
+.db .ob { display: flex; flex-direction: column; gap: 16px; max-width: 560px; }
+.db .ob-card { padding: 26px 28px; }
+.db .ob-step { font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--emerald-dark); margin-bottom: 6px; }
+.db .ob-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.db .ob-row input { flex: 1 1 200px; }
+.db .ob input, .db .ob textarea {
+  width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line-strong);
+  font: inherit; font-size: 14.5px; background: #fff; color: var(--ink);
+}
+.db .ob input:focus, .db .ob textarea:focus { outline: 2px solid rgba(20, 156, 96, .25); border-color: var(--emerald); }
+.db .ob-note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.db .ob-note a, .db .ob-listing a { color: var(--emerald-dark); font-weight: 700; cursor: pointer; text-decoration: underline; }
+.db .ob-dev { font-size: 12.5px; background: #fff7e8; border: 1px dashed #e6c27a; color: #6b4a12; padding: 6px 10px; border-radius: 8px; margin: 8px 0; }
+.db .ob-err { color: var(--danger); font-size: 13px; margin: 10px 0 0; }
+.db .ob-results { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+.db .ob-results button {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 11px 14px;
+  border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; cursor: pointer; color: var(--ink);
+}
+.db .ob-results button:last-child { border-bottom: 0; }
+.db .ob-results button:hover { background: var(--paper); }
+.db .ob-results span { font-size: 12.5px; color: var(--muted); }
+.db .ob-listing {
+  display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 12px;
+  background: var(--paper); border: 1px solid var(--line); margin-bottom: 14px;
+}
+.db .ob-listing span { font-size: 13px; color: var(--muted); }
+.db .ob-listing a { font-size: 12.5px; margin-top: 4px; }
+.db .ob-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.db .ob-chips button {
+  padding: 8px 14px; border-radius: 99px; border: 1px solid var(--line-strong); background: #fff;
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--ink);
+}
+.db .ob-chips button.on { background: var(--green); color: var(--ivory); border-color: var(--green); }
+.db .ob-claimed {
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 12px;
+  background: #fff7e8; border: 1px solid #f5dcae; color: #4d3509; margin-top: 4px;
+}
+.db .ob-claimed p { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.db .ob-claimed .ob-claimed { background: #fff; border-color: #f0e2c4; }
+.db .ob-wait b { font-size: 17px; }
+.db .ob-wait p { color: var(--muted); line-height: 1.55; }
+
+/* ----- settings: team access ----- */
+.db .ta-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 0; border-top: 1px solid var(--line); font-size: 13.5px;
+}
+.db .ta-row em { font-style: normal; color: var(--muted); font-size: 12.5px; }
+.db .ta-actions { display: flex; gap: 8px; align-items: center; }
+.db .ta-actions .btn { padding: 6px 12px; font-size: 12.5px; }
+.db .ta-requests { background: #fff7e8; border: 1px solid #f5dcae; border-radius: 12px; padding: 2px 12px; margin-bottom: 10px; }
+.db .ta-requests .ta-row:first-child { border-top: 0; }
+.db .ta-invite { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.db .ta-invite input { flex: 1 1 180px; }

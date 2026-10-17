@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useBusiness } from "@/lib/business-context";
+import { TeamAccessCard } from "./team-access";
 
 type WaAccount = {
   connected: boolean;
@@ -270,8 +271,14 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  const isOwner = business?.role === "owner";
+
   useEffect(() => {
     if (!business) return;
+    if (business.role !== "owner") {
+      setFull(null);
+      return;
+    }
     api<WaAccount>(`businesses/${business.id}/wa-account`).then(setAcct);
     api<BusinessFull[]>("businesses").then((rows) => {
       const b = rows.find((r) => r.id === business.id);
@@ -296,7 +303,8 @@ export default function SettingsPage() {
         method: "PATCH",
         body: JSON.stringify({
           name: name.trim(),
-          owner_wa_phone: phone.trim() || null,
+          // Only sent when changed: a new alert number must be a verified one.
+          ...(phone.trim() !== (full?.owner_wa_phone ?? "") ? { owner_wa_phone: phone.trim() || null } : {}),
           languages: langMode.split(","),
           agent_notes: notes.trim() || null,
           review_link: reviewLink.trim() || null,
@@ -312,6 +320,19 @@ export default function SettingsPage() {
   }
 
   if (error) return <p className="sub">Could not reach the Footfall API: {error}</p>;
+  if (business && !isOwner) {
+    return (
+      <>
+        <h1>Settings</h1>
+        <div className="db-card" style={{ maxWidth: 640 }}>
+          <p style={{ margin: 0 }}>
+            You&apos;re on {business.name}&apos;s team as a <b>{business.role}</b>. The WhatsApp
+            number, agent settings and who has access are managed by the owner.
+          </p>
+        </div>
+      </>
+    );
+  }
   if (!full) return <p className="sub">Loading…</p>;
 
   return (
@@ -320,6 +341,8 @@ export default function SettingsPage() {
       <p className="sub">How your receptionist behaves. Changes apply to the next message.</p>
 
       <WhatsAppCard businessId={full.id} />
+
+      <TeamAccessCard businessId={full.id} />
 
       <GrowCard acct={acct} />
 

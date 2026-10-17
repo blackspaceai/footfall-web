@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
 import { BusinessProvider, useBusiness } from "@/lib/business-context";
 import { AlertsProvider, useAlerts } from "@/lib/alerts";
 import { AlertsBell } from "./alerts-bell";
+import { api, type Me, type Role } from "@/lib/api";
+
+const RANK: Record<Role, number> = { staff: 1, manager: 2, owner: 3 };
 
 const I = {
   today: <path d="M8 2v3M16 2v3M3.5 9h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z" />,
@@ -28,11 +31,11 @@ function Icon({ d }: { d: React.ReactNode }) {
   );
 }
 
-const NAV = [
+const NAV: { href: string; label: string; icon: React.ReactNode; minRole?: Role }[] = [
   { href: "/dashboard", label: "Today", icon: I.today },
   { href: "/dashboard/inbox", label: "Inbox", icon: I.inbox },
   { href: "/dashboard/bookings", label: "Bookings", icon: I.bookings },
-  { href: "/dashboard/insights", label: "Insights", icon: I.insights },
+  { href: "/dashboard/insights", label: "Insights", icon: I.insights, minRole: "manager" },
   { href: "/dashboard/services", label: "Services & products", icon: I.services },
   { href: "/dashboard/team", label: "Team", icon: I.team },
   { href: "/dashboard/hours", label: "Hours", icon: I.hours },
@@ -71,6 +74,13 @@ function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { disablePush } = useAlerts();
+  const { business } = useBusiness();
+  const [superadmin, setSuperadmin] = useState(false);
+  useEffect(() => {
+    api<Me>("me").then((m) => setSuperadmin(m.is_superadmin)).catch(() => {});
+  }, []);
+  const nav = NAV.filter((n) => !n.minRole || RANK[business?.role ?? "owner"] >= RANK[n.minRole]);
+  if (superadmin) nav.push({ href: "/dashboard/review", label: "Review", icon: I.settings });
 
   useEffect(() => {
     if (!supabaseConfigured) return; // dev mode without Supabase — no gate
@@ -99,7 +109,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
         <BusinessSwitcher />
         <nav>
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
