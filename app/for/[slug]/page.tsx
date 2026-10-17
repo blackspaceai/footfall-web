@@ -35,6 +35,15 @@ const DEEP = "#081f16";
 const EMERALD = "#17a566";
 const MARIGOLD = "#f0a02c";
 const IVORY = "#eafff3";
+const EYEBROW = {
+  fontSize: 13,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "#7df2a8",
+  margin: "0 0 14px",
+  lineHeight: 1.4,
+} as const;
 
 export default async function VerticalPage({
   params,
@@ -81,10 +90,14 @@ export default async function VerticalPage({
 
       {/* hero */}
       <header style={{ background: FOREST, color: IVORY, padding: "64px 24px 56px", textAlign: "center" }}>
-        <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#7df2a8", margin: "0 0 14px" }}>
-          Footfall for {v.name.toLowerCase()}
-        </p>
+        {!v.eyebrow && <p style={EYEBROW}>Footfall for {v.name.toLowerCase()}</p>}
         <h1 style={{ fontSize: "clamp(30px, 5vw, 48px)", fontWeight: 800, letterSpacing: "-0.03em", margin: "0 auto 18px", maxWidth: 780, lineHeight: 1.12 }}>
+          {/* The searched phrase belongs in the h1; styled as the small label. */}
+          {v.eyebrow && (
+            <>
+              <span style={{ ...EYEBROW, display: "block" }}>{v.eyebrow}</span>{" "}
+            </>
+          )}
           {v.h1}
         </h1>
         <p style={{ fontSize: 17, lineHeight: 1.65, maxWidth: 640, margin: "0 auto 28px", color: "#cfe8d8" }}>

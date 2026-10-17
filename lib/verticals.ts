@@ -8,6 +8,9 @@ export type Vertical = {
   name: string; // plural, e.g. "Salons"
   singular: string;
   title: string; // <title>
+  // The phrase people actually search, shown as a small label inside the
+  // <h1> above the headline (Search Console showed these queries verbatim).
+  eyebrow?: string;
   description: string; // meta description
   keywords: string[];
   h1: string;
@@ -22,7 +25,7 @@ export const VERTICALS: Vertical[] = [
     slug: "salons",
     name: "Salons",
     singular: "salon",
-    title: "Salon AI — WhatsApp AI receptionist & booking agent for salons | Footfall",
+    title: "Salon AI — WhatsApp AI receptionist & booking agent for salons | Footfall AI",
     description:
       "Footfall is the salon AI that answers every WhatsApp message, books appointments into your stylists' calendars, sends reminders and chases no-shows — 24×7, in English, Hindi and Hinglish. 14 days free.",
     keywords: [
@@ -85,7 +88,7 @@ export const VERTICALS: Vertical[] = [
     slug: "spas",
     name: "Spas",
     singular: "spa",
-    title: "Spa AI — WhatsApp booking agent for spas & wellness centres | Footfall",
+    title: "Spa AI — WhatsApp booking agent for spas & wellness centres | Footfall AI",
     description:
       "Footfall is the spa AI that turns WhatsApp inquiries into confirmed appointments — therapies, packages, couples slots — with reminders and no-show recovery built in. 24×7, multilingual. 14 days free.",
     keywords: [
@@ -147,7 +150,7 @@ export const VERTICALS: Vertical[] = [
     slug: "clinics",
     name: "Clinics",
     singular: "clinic",
-    title: "Clinic AI — WhatsApp appointment booking for clinics | Footfall",
+    title: "Clinic AI — WhatsApp appointment booking for clinics | Footfall AI",
     description:
       "Footfall is the clinic AI receptionist on WhatsApp: books patient appointments into each doctor's schedule, answers timing and fee questions, sends reminders and recovers missed visits. 24×7. 14 days free.",
     keywords: [
@@ -209,7 +212,7 @@ export const VERTICALS: Vertical[] = [
     slug: "doctors",
     name: "Doctors",
     singular: "doctor's practice",
-    title: "Doctor AI — WhatsApp appointment assistant for doctors | Footfall",
+    title: "Doctor AI — WhatsApp appointment assistant for doctors | Footfall AI",
     description:
       "Footfall is the doctor AI that manages your appointment book on WhatsApp: patients book, reschedule and get reminders automatically, while you see a clean day sheet. 24×7, English + Hindi. 14 days free.",
     keywords: [
@@ -271,7 +274,7 @@ export const VERTICALS: Vertical[] = [
     slug: "dentists",
     name: "Dentists",
     singular: "dental clinic",
-    title: "Dentist AI — WhatsApp booking for dental clinics | Footfall",
+    title: "Dentist AI — WhatsApp booking for dental clinics | Footfall AI",
     description:
       "Footfall is the dental clinic AI on WhatsApp: books cleanings, RCT sittings and consultations into chair-time, answers fee questions, reminds patients and recovers no-shows. 14 days free.",
     keywords: [
@@ -332,7 +335,7 @@ export const VERTICALS: Vertical[] = [
     slug: "hospitals",
     name: "Hospitals",
     singular: "hospital",
-    title: "Hospital AI — WhatsApp appointment desk for hospitals | Footfall",
+    title: "Hospital AI — WhatsApp appointment desk for hospitals | Footfall AI",
     description:
       "Footfall is the hospital AI that runs OPD appointment booking on WhatsApp: multi-department, multi-doctor scheduling with reminders, waitlists and staff hand-off. 24×7, multilingual. 14 days free.",
     keywords: [
@@ -393,7 +396,7 @@ export const VERTICALS: Vertical[] = [
     slug: "gyms",
     name: "Gyms",
     singular: "gym",
-    title: "Gym AI — WhatsApp assistant for gyms & fitness studios | Footfall",
+    title: "Gym AI — WhatsApp assistant for gyms & fitness studios | Footfall AI",
     description:
       "Footfall is the gym AI on WhatsApp: books trial sessions and PT slots, answers membership questions instantly, reminds members and wins back the ones who drift. 24×7. 14 days free.",
     keywords: [
@@ -454,7 +457,7 @@ export const VERTICALS: Vertical[] = [
     slug: "physiotherapy",
     name: "Physiotherapy",
     singular: "physiotherapy practice",
-    title: "Physiotherapy AI — WhatsApp booking for physio clinics | Footfall",
+    title: "Physiotherapy AI — WhatsApp booking for physio clinics | Footfall AI",
     description:
       "Footfall is the physiotherapy clinic AI on WhatsApp: books assessment and therapy sessions, keeps multi-week treatment plans on schedule with reminders, and recovers missed sessions. 14 days free.",
     keywords: [
@@ -514,7 +517,7 @@ export const VERTICALS: Vertical[] = [
     slug: "yoga-studios",
     name: "Yoga studios",
     singular: "yoga studio",
-    title: "Yoga studio AI — WhatsApp booking for yoga & pilates | Footfall",
+    title: "Yoga studio AI — WhatsApp booking for yoga & pilates | Footfall AI",
     description:
       "Footfall is the yoga studio AI on WhatsApp: fills class slots and trials, answers schedule questions instantly, reminds students and keeps your batches full. 24×7. 14 days free.",
     keywords: [
@@ -574,7 +577,7 @@ export const VERTICALS: Vertical[] = [
     slug: "beauty-parlours",
     name: "Beauty parlours",
     singular: "beauty parlour",
-    title: "Beauty parlour AI — WhatsApp booking for parlours | Footfall",
+    title: "Beauty parlour AI — WhatsApp booking for parlours | Footfall AI",
     description:
       "Footfall is the beauty parlour AI on WhatsApp: books facials, waxing, mehendi and bridal packages into your team's day, answers price questions instantly, and chases no-shows. 14 days free.",
     keywords: [
@@ -635,10 +638,16 @@ export const VERTICALS: Vertical[] = [
     slug: "tattoo-studios",
     name: "Tattoo studios",
     singular: "tattoo studio",
-    title: "Tattoo studio AI — WhatsApp booking & consults | Footfall",
+    title: "AI Receptionist for Tattoo & Piercing Studios | Footfall AI",
+    eyebrow: "AI receptionist for tattoo & piercing studios",
     description:
-      "Footfall is the tattoo studio AI on WhatsApp: books consults and sessions, answers pricing questions, manages artist calendars and deposits notes — while you keep the machine running. 14 days free.",
+      "Footfall AI is the AI receptionist for tattoo and piercing studios on WhatsApp: answers price questions, books consults and sessions per artist, and sends reminders 24×7. 14 days free.",
     keywords: [
+      "ai receptionist for tattoo shops",
+      "ai receptionist for tattoo and piercing studios",
+      "ai answering service for tattoo studios",
+      "automated tattoo booking",
+      "piercing booking whatsapp",
       "tattoo studio ai",
       "tattoo booking whatsapp",
       "tattoo appointment app india",
@@ -686,6 +695,14 @@ export const VERTICALS: Vertical[] = [
         a: "Each artist has their own calendar, working days and session lengths.",
       },
       {
+        q: "Does it book piercings too?",
+        a: "Yes. Piercings are short, fixed-price services, so Footfall quotes the price and books the slot directly — custom tattoo work goes to a consult first.",
+      },
+      {
+        q: "Is it an AI answering service?",
+        a: "For WhatsApp, yes: every message gets an instant answer, day or night — prices, availability, aftercare basics — and a booked slot. It doesn't pick up phone calls; with missed-call alerts set up on your number, callers you miss get a WhatsApp message to continue there.",
+      },
+      {
         q: "Can I take over a conversation?",
         a: "One tap — the AI pauses on that chat and you talk to the client directly.",
       },
@@ -695,7 +712,7 @@ export const VERTICALS: Vertical[] = [
     slug: "barbershops",
     name: "Barbershops",
     singular: "barbershop",
-    title: "Barbershop AI — WhatsApp booking for barbers | Footfall",
+    title: "Barbershop AI — WhatsApp booking for barbers | Footfall AI",
     description:
       "Footfall is the barbershop AI on WhatsApp: books cuts and shaves into each barber's chair, kills the waiting crowd, reminds customers and fills quiet hours. 24×7. 14 days free.",
     keywords: [
@@ -755,7 +772,7 @@ export const VERTICALS: Vertical[] = [
     slug: "photographers",
     name: "Photographers",
     singular: "photography business",
-    title: "Photographer AI — WhatsApp booking & enquiry agent for photographers | Footfall",
+    title: "Photographer AI — WhatsApp booking & enquiry agent for photographers | Footfall AI",
     description:
       "Footfall is the photographer's AI assistant on WhatsApp: answers package and pricing enquiries in seconds, books shoots and consults, and chases the leads you'd otherwise lose while shooting. 14 days free.",
     keywords: [
@@ -817,7 +834,7 @@ export const VERTICALS: Vertical[] = [
     slug: "creators",
     name: "Content creators",
     singular: "creator business",
-    title: "Creator AI — WhatsApp booking & brand-enquiry agent for creators | Footfall",
+    title: "Creator AI — WhatsApp booking & brand-enquiry agent for creators | Footfall AI",
     description:
       "Footfall is the creator's AI assistant: answers brand collaboration and rate-card enquiries on WhatsApp in seconds, books calls and shoots, and makes sure no deal goes cold in your DMs. 14 days free.",
     keywords: [
@@ -879,10 +896,15 @@ export const VERTICALS: Vertical[] = [
     slug: "musicians",
     name: "Musicians & bands",
     singular: "band",
-    title: "Musician AI — WhatsApp booking agent for bands, DJs & live acts | Footfall",
+    title: "AI Receptionist for DJs & Musicians on WhatsApp | Footfall AI",
+    eyebrow: "AI receptionist for DJs, musicians & bands",
     description:
-      "Footfall is the AI booking agent for musicians, live bands, singers and DJs: answers gig enquiries and rate questions on WhatsApp instantly, checks date availability and books the show. 14 days free.",
+      "Footfall AI is the AI receptionist and booking agent for DJs, musicians, singers and live bands: answers gig enquiries and rates on WhatsApp instantly, checks dates and books the show.",
     keywords: [
+      "ai receptionist for djs and musicians",
+      "ai receptionist for djs",
+      "ai receptionist for musicians",
+      "dj booking whatsapp",
       "musician ai",
       "band booking software",
       "ai booking agent for musicians",
@@ -941,10 +963,16 @@ export const VERTICALS: Vertical[] = [
     slug: "makeup-artists",
     name: "Makeup artists",
     singular: "makeup studio",
-    title: "Makeup artist AI — WhatsApp booking for MUAs | Footfall",
+    title: "AI Booking Assistant for Makeup Artists | Footfall AI",
+    eyebrow: "AI booking assistant for makeup & beauty artists",
     description:
-      "Footfall is the makeup artist's AI assistant on WhatsApp: quotes bridal and party packages, checks date availability, books trials and books the big day — 24×7. 14 days free.",
+      "Footfall AI is the WhatsApp booking assistant and AI receptionist for makeup and beauty artists: quotes bridal and party packages, checks dates, books trials 24×7. 14 days free.",
     keywords: [
+      "ai booking assistant for makeup artists",
+      "ai booking assistant for beauty artists",
+      "ai receptionist for makeup artists",
+      "instagram ai agent for makeup artists",
+      "makeup artist price whatsapp",
       "makeup artist ai",
       "mua booking app india",
       "bridal makeup booking whatsapp",
@@ -953,7 +981,7 @@ export const VERTICALS: Vertical[] = [
     ],
     h1: "Bridal season, without the WhatsApp chaos",
     intro:
-      "Bridal enquiries arrive months ahead and party bookings arrive same-day — both on WhatsApp, both while your hands are literally on a client's face. Footfall answers instantly with your packages and free dates, books the trial, and locks the wedding date.",
+      "For makeup and beauty artists, bridal enquiries arrive months ahead and party bookings arrive same-day — both on WhatsApp, both while your hands are literally on a client's face. Footfall answers instantly with your packages and free dates, books the trial, and locks the wedding date.",
     pains: [
       {
         title: "Wedding dates are won early",
@@ -992,6 +1020,18 @@ export const VERTICALS: Vertical[] = [
         a: "Each artist has their own calendar, and you can charge more for senior artists if your pricing works that way.",
       },
       {
+        q: "How do clients ask a makeup artist for prices on WhatsApp?",
+        a: "Usually in one message: the occasion (bridal, engagement, party), the date, the city and how many people need makeup. Footfall replies straight away with your matching package, your travel charges and whether the date is free, then offers trial slots. You set the prices once — it never invents or discounts them.",
+      },
+      {
+        q: "Is it an AI receptionist or a booking assistant?",
+        a: "Both. It answers enquiries like a receptionist — packages, availability, location, policies — and books like an assistant: the trial, the wedding date and the reminders, straight into your calendar.",
+      },
+      {
+        q: "Does it work with Instagram DMs?",
+        a: "Footfall works on WhatsApp, which is where clients in India confirm bookings. Put your WhatsApp link in your Instagram bio and highlights, and every enquiry that moves from Instagram to WhatsApp is answered instantly.",
+      },
+      {
         q: "How fast is setup?",
         a: "About a day — packages, prices, trial rates and your calendar, done for you.",
       },
@@ -1001,7 +1041,7 @@ export const VERTICALS: Vertical[] = [
     slug: "tutors",
     name: "Tutors & coaching",
     singular: "coaching practice",
-    title: "Tutor AI — WhatsApp booking for tutors & coaching classes | Footfall",
+    title: "Tutor AI — WhatsApp booking for tutors & coaching classes | Footfall AI",
     description:
       "Footfall is the tutor's AI assistant on WhatsApp: answers batch, fee and demo-class questions instantly, books demos and sessions, and reminds students so attendance holds. 14 days free.",
     keywords: [

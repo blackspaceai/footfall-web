@@ -14,7 +14,8 @@ const JSON_LD = {
     {
       "@type": "Organization",
       "@id": "https://getfootfall.com/#org",
-      name: "Footfall",
+      name: "Footfall AI",
+      alternateName: ["Footfall", "getfootfall"],
       url: "https://getfootfall.com/",
       logo: "https://getfootfall.com/logo/footfall-app-icon.svg",
       parentOrganization: { "@type": "Organization", name: "BlackSpace AI" },
@@ -22,7 +23,7 @@ const JSON_LD = {
     },
     {
       "@type": "SoftwareApplication",
-      name: "Footfall — WhatsApp AI receptionist",
+      name: "Footfall AI — WhatsApp AI receptionist",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web, iOS, Android",
       url: "https://getfootfall.com/",

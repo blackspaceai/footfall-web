@@ -3,14 +3,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Footfall — WhatsApp AI receptionist & booking agent | Never miss another booking",
+    default: "Footfall AI — WhatsApp AI receptionist & booking agent",
     template: "%s",
   },
   description:
-    "Footfall is a WhatsApp AI that answers every customer message in seconds, books appointments into your calendar, and chases no-shows — for salons, spas, clinics, doctors, dentists, hospitals and gyms in India. 24×7, English + Hindi. ₹1,499/mo, 14 days free.",
+    "Footfall AI is a WhatsApp AI that answers every customer message in seconds, books appointments into your calendar, and chases no-shows — for salons, spas, clinics, doctors, dentists, hospitals and gyms in India. 24×7, English + Hindi. ₹1,499/mo, 14 days free.",
   metadataBase: new URL("https://getfootfall.com"),
   alternates: { canonical: "https://getfootfall.com/" },
   keywords: [
+    "footfall ai",
+    "footfall app",
     "whatsapp ai",
     "whatsapp booking ai",
     "booking ai",
@@ -38,18 +40,18 @@ export const metadata: Metadata = {
   ],
   icons: { icon: "/logo/footfall-app-icon.svg" },
   openGraph: {
-    title: "Footfall — WhatsApp AI receptionist & booking agent",
+    title: "Footfall AI — WhatsApp AI receptionist & booking agent",
     description:
       "Answers every WhatsApp message in seconds, books the appointment, chases no-shows — for salons, clinics, doctors, spas and gyms. By BlackSpace AI.",
     url: "https://getfootfall.com/",
-    siteName: "Footfall",
+    siteName: "Footfall AI",
     type: "website",
     locale: "en_IN",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Footfall — never miss another booking" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Footfall AI — never miss another booking" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Footfall — WhatsApp AI receptionist & booking agent",
+    title: "Footfall AI — WhatsApp AI receptionist & booking agent",
     description:
       "Your AI receptionist on WhatsApp. Answers in seconds, books the slot, chases no-shows. 14 days free.",
     images: ["/og.png"],
